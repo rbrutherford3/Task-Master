@@ -1,0 +1,9 @@
+<h1>Tasks</h1>
+<ul>
+{% for task in object_list %}
+    <li><a href="{% url 'taskmaster:form' task.id %}">{{ task.short_desc }}</li>
+{% empty %}
+    <li>No articles yet.</li>
+{% endfor %}
+</ul>
+<a href="{% url 'taskmaster:new' %}">New Task</a>

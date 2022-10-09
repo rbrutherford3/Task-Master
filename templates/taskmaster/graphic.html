@@ -1,0 +1,63 @@
+<!DOCTYPE HTML>
+<html>
+<head>
+    <title>Task Master</title>
+    {% load static %}
+    <link rel="stylesheet" href="{% static 'taskmaster/style.css' %}">
+    <script type="text/javascript">
+        
+        // Hide or unhide details (and change plus/minus controls)
+        function expand(id) {
+            var details = document.getElementById("details" + id);
+            var label = document.getElementById("label" + id);
+            if (details.style.display == "block") {
+                details.style.display = "none";
+                label.innerHTML = "+ " + label.getAttribute("data-value");
+            }
+            else {
+                details.style.display = "block";
+                label.innerHTML = "-  " + label.getAttribute("data-value");
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="body">
+        <div class="column high">
+            <h1>Very Urgent!</h1>
+            {% for task in high_urgency %}
+            {% include "taskmaster/tasks.html" %}
+            {% empty %}
+            <h1>No tasks</h1>
+            {% endfor %}
+        </div>
+        <div class="column medium">
+            <h1>Urgent</h1>
+            {% for task in med_urgency %}
+            {% include "taskmaster/tasks.html" %}
+            {% empty %}
+            <h1>No tasks</h1>
+            {% endfor %}
+        </div>
+        <div class="column low">
+            <h1>Not Urgent</h1>
+            {% for task in low_urgency %}
+            {% include "taskmaster/tasks.html" %}
+            {% empty %}
+            <h1>No tasks</h1>
+            {% endfor %}
+        </div>
+        <div class="links">
+            <div id="new" class="link">
+                <a href="{% url 'taskmaster:new' %}">
+                    <div class="label">Add New Task</div>
+                </a>
+            </div>
+            <div id="purge" class="link">
+                <a href="{% url 'taskmaster:purge' %}" onClick="return confirm('Are you sure you want to delete these tasks?');">
+                    <div class="label">Delete Completed Tasks</div>
+                </a>
+            </div>
+        </div>
+    </div>
+</body>

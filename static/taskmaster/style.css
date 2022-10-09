@@ -1,0 +1,97 @@
+body, .body {
+    margin: 0;
+}
+.high {
+    background-color: rgb(180, 0, 0);
+}
+.medium {
+    background-color: rgb(180, 180, 0);
+}
+.low {
+    background-color: rgb(0, 180, 0);
+}
+h1, .label, .details, input, select, textarea {
+    font-family: Arial, Helvetica, sans-serif;
+}
+.label {
+    font-weight: bold;
+    font-size: medium;
+    cursor: pointer;
+    display: inline-block;
+}
+.details {
+    display: none;
+    font-size: small;
+    font-weight: normal;
+}
+h1 {
+    font-size: medium;
+    font-weight: bold;
+}
+a {
+    text-decoration: none;
+    font-weight: normal;
+    color: black;
+}
+.column {
+    float: left;
+    text-align: center;
+    border-right: 5px solid black;
+    padding: 0 10px;
+    height: 100vh;
+}
+.task, .detail, .link {
+    text-align: left;
+    display: table;
+    border: 1px solid black;
+    box-shadow: 2px 2px 2px;
+    padding: 5px;
+    border-radius: 5px;
+    margin: 5px 0;
+    font-weight: bold;
+}
+.task {
+    width: 220px;
+}
+.detail {
+    min-width: 200px;
+    margin: 10px;
+}
+.links {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+}
+.link {
+    background-color: rgb(180, 180, 180);
+    margin-left: auto;
+    margin-right: 0;
+}
+input[type=text], input[type=date], input[type=time], select, textarea {
+    display: block;
+    border: 1px solid black;
+    padding: 1px 2px;
+    width: calc(100% - 6px);
+    min-width: min-content;
+    margin: 0;
+    margin-bottom: 5px;
+    font-size: small;
+}
+#due_date, #importance, input[type="submit"] {
+    margin-bottom: 0;
+}
+select, input[type=submit], .buttons {
+    width: 100%;
+}
+textarea {
+    resize: none;
+}
+input[type="checkbox"] {
+    float: right;
+}
+.buttons {
+    display: table;
+}
+.button {
+    display: table-cell;
+}
