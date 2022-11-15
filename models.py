@@ -4,6 +4,7 @@ import datetime
 
 # The sole data piece for TaskMaster - the task
 class Task(models.Model):
+    user = models.CharField(max_length=150)
     short_desc = models.CharField(max_length=200)
     due_date = models.DateField(null=True, blank=True)
     due_time = models.TimeField(null=True, blank=True)

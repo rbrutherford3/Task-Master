@@ -4,7 +4,7 @@
 
 ![TaskMaster logo](TaskMaster0.png "TaskMaster logo")
 
-Task Master is a task management software created by Spiff Industries for standard desktop browsers.  It allows the user to easily create, edit, and check off tasks that can be optionally descriptive.  The level of detail is up to the user.  It employs the principles of importance and urgency as described in [*The 7 Habits of Highly Effective People&#174;*](https://www.franklincovey.com/the-7-habits/) by Steven Covey.  This software attempts to bring that system of efficiency to the 21st century.
+Task Master is a task management software created by Spiff Industries for standard desktop browsers available at [https://taskmaster.spiffindustries.com/](https://taskmaster.spiffindustries.com/).  It allows the user to easily create, edit, and check off tasks that can be optionally descriptive.  The level of detail is up to the user.  It employs the principles of importance and urgency as described in [*The 7 Habits of Highly Effective People&#174;*](https://www.franklincovey.com/the-7-habits/) by Steven Covey.  This software attempts to bring that system of efficiency to the 21st century.
 
 ## Table of Contents
 
@@ -17,7 +17,7 @@ Task Master is a task management software created by Spiff Industries for standa
 
 ### Background
 
-TaskMaster was released as an [Android app on Google Play](https://play.google.com/store/apps/details?id=com.rsquared.taskmaster&hl=en&gl=US) in 2020.  It was not successful and had many development problems that made it difficult to create new versions.  Although visually appealing, the tasks themselves had too much granularity for importance and urgency to make it practical.  This version of TaskMaster attempts to simplify the process and broaden the market.  Future versions of TaskMaster will introduce the use of cookies and user accounts and be deployed on the spiffindustries.com AWS server.  Once that release is stable, the next version will introduce Android and iPhone apps that can employ the same user accounts.
+TaskMaster was released as an [Android app on Google Play](https://play.google.com/store/apps/details?id=com.rsquared.taskmaster&hl=en&gl=US) in 2020.  It was not successful and had many development problems that made it difficult to create new versions.  Although visually appealing, the tasks themselves had too much granularity for importance and urgency to make it practical.  This version of TaskMaster attempts to simplify the process and broaden the market.  It introduces the use of cookies and user accounts and is deployed on the spiffindustries.com AWS server.  Once this release is stable, the next version will introduce Android and iPhone apps that can employ the same user accounts.
 
 ## Install
 
@@ -39,6 +39,10 @@ As mentioned above, you will have to configure your database.  Specifically, you
 Install Django:
 ```
 python -m pip install Django
+```
+Install Django Crispy Forms:
+```
+python -m pip install django-crispy-forms
 ```
 Create a Django project:
 ```
@@ -64,7 +68,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 ```
-Add the line ``'taskmaster.apps.taskmasterConfig'`` so it now reads:
+Add the lines ``'taskmaster.apps.taskmasterConfig'`` and ``'crispy_forms'`` so it now reads:
 ```
 INSTALLED_APPS = [
     'taskmaster.apps.taskmasterConfig',
@@ -74,6 +78,7 @@ INSTALLED_APPS = [
     'django.contrib.sessions',
     'django.contrib.messages',
     'django.contrib.staticfiles',
+    'crispy_forms',
 ]
 ```
 Scroll down to the databases portion, which should read something like:

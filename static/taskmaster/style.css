@@ -17,7 +17,7 @@ h1, .label, .details, input, select, textarea {
     font-weight: bold;
     font-size: medium;
     cursor: pointer;
-    display: inline-block;
+    display: inline;
 }
 .details {
     display: none;
@@ -37,6 +37,7 @@ a {
     float: left;
     text-align: center;
     border-right: 5px solid black;
+    border-bottom: 5px solid black;
     padding: 0 10px;
     height: 100vh;
 }
@@ -51,6 +52,7 @@ a {
     font-weight: bold;
 }
 .task {
+    position: relative;
     width: 220px;
 }
 .detail {
@@ -94,4 +96,7 @@ input[type="checkbox"] {
 }
 .button {
     display: table-cell;
+}
+.checkbox {
+    float: right;
 }

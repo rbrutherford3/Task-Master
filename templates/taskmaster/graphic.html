@@ -24,6 +24,7 @@
             }
         }
     </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
 </head>
 <body>
     <div id="body">
@@ -52,6 +53,7 @@
             {% endfor %}
         </div>
         <div class="links">
+            {% if user.is_authenticated %}
             <div id="new" class="link">
                 <a href="{% url 'taskmaster:new' %}">
                     <div class="label">Add New Task</div>
@@ -62,6 +64,18 @@
                     <div class="label">Delete Completed Tasks</div>
                 </a>
             </div>
+            <div id="logout" class="link">
+                <a href="{% url 'taskmaster:logout' %}">
+                    <div class="label">Logout</div>
+                </a>
+            </div>
+            {% else %}
+            <div id="login" class="link">
+                <a href="{% url 'taskmaster:login' %}">
+                    <div class="label">Login</div>
+                </a>
+            </div>
+            {% endif %}
         </div>
     </div>
 </body>

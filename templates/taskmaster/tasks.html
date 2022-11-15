@@ -1,13 +1,13 @@
     <div class="task {% if task.importance == 0 %}low{% elif task.importance == 1 %}medium{% else %}high{% endif %}" id="task{{ task.pk }}">
-        <div class="label" id="label{{ task.pk }}" data-value="{{ task.short_desc }}" onClick="expand('{{ task.pk }}');">
-            + {{ task.short_desc }}
-        </div>
-        <a href="{% url 'taskmaster:toggle' task.id %}"><input type="checkbox"{% if task.completed %} checked{% endif %}></a>
-        <div class="details" id="details{{ task.pk }}">
-            {% if task.due_date != Null %}Due: {{ task.formatted_due_date }}{% if task.due_time != Null %} {{ task.due_time }}{% endif %}<br>{% endif %}
-            <i>
-            {% if task.long_desc != Null %}{{ task.long_desc }}<br>{% endif %}
-            </i>
-            <a href="{% url 'taskmaster:form' task.id %}">...</a>
-        </div>
+        <input type="checkbox"{% if task.completed %} checked{% endif %} onchange="location.href='{% url 'taskmaster:toggle' task.id %}';">
+            <div class="label" id="label{{ task.pk }}" data-value="{{ task.short_desc }}" onClick="expand('{{ task.pk }}');">
+                + {{ task.short_desc }}
+            </div>
+            <div class="details" id="details{{ task.pk }}">
+                {% if task.due_date != Null %}Due: {{ task.formatted_due_date }}{% if task.due_time != Null %} {{ task.due_time }}{% endif %}<br>{% endif %}
+                <i>
+                {% if task.long_desc != Null %}{{ task.long_desc }}<br>{% endif %}
+                </i>
+                <a href="{% url 'taskmaster:form' task.id %}">...</a>
+            </div>
     </div>

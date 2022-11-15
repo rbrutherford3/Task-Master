@@ -10,4 +10,7 @@ urlpatterns = [
     path('save/', views.save_task, name='save'),
     path('<int:pk>/toggle/', views.toggle, name='toggle'),
     path('purge/', views.purge, name='purge'),
+    path('register/', views.register_request, name='register'),
+    path('login', views.login_request, name='login'),
+    path('logout', views.logout_request, name='logout'),
 ]
