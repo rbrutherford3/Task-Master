@@ -6,13 +6,21 @@
 
 <!--Login--> 
 <div class="container py-5">
-  <h1>Login</h1>
-  <form method="POST">
-    {% csrf_token %}
-    {{ login_form|crispy }}
-    <button class="btn btn-primary" type="submit">Login</button>
-  </form>
-  <p class="text-center">Don't have an account? <a href="/register">Create an account</a>.</p>
+    <h1>Task Master</h1>
+    <h2>Login</h2>
+    <form method="POST">
+        {% csrf_token %}
+        {{ login_form|crispy }}
+        <button class="button label normal_text" style="float: left;" type="submit">Login</button>
+    </form>
+    <p class="text-center">Don't have an account? <a href="{% url 'taskmaster:register' %}">Create an account</a>.</p>
+    <div>
+        {% if messages %}
+        {% for message in messages %}
+        <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-dark{% endif %}">{{ message }}</div>
+        {% endfor %}
+        {% endif %}
+    </div>
 </div>
 
 {% endblock %}

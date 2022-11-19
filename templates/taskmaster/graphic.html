@@ -1,81 +1,88 @@
-<!DOCTYPE HTML>
-<html>
-<head>
-    <title>Task Master</title>
-    {% load static %}
-    <link rel="apple-touch-icon" sizes="180x180" href="{% static 'favicon/apple-touch-icon.png' %}">
-    <link rel="icon" type="image/png" sizes="32x32" href="{% static 'favicon/favicon-32x32.png' %}">
-    <link rel="icon" type="image/png" sizes="16x16" href="{% static 'favicon/favicon-16x16.png' %}">
-    <link rel="manifest" href="{% static 'favicon/site.webmanifest' %}">
-    <link rel="stylesheet" href="{% static 'taskmaster/style.css' %}">
-    <script type="text/javascript">
-        
-        // Hide or unhide details (and change plus/minus controls)
-        function expand(id) {
-            var details = document.getElementById("details" + id);
-            var label = document.getElementById("label" + id);
-            if (details.style.display == "block") {
-                details.style.display = "none";
-                label.innerHTML = "+ " + label.getAttribute("data-value");
-            }
-            else {
-                details.style.display = "block";
-                label.innerHTML = "-  " + label.getAttribute("data-value");
-            }
-        }
-    </script>
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-</head>
-<body>
-    <div id="body">
-        <div class="column high">
-            <h1>Very Urgent!</h1>
-            {% for task in high_urgency %}
-            {% include "taskmaster/tasks.html" %}
-            {% empty %}
-            <h1>No tasks</h1>
+{% extends "taskmaster/header.html" %}
+
+{% block content %}
+
+{% if user.is_authenticated %}
+<div id="body">
+    <div class="column high">
+        <h1>Very Urgent!</h1>
+        {% for task in high_urgency %}
+        {% include "taskmaster/tasks.html" %}
+        {% empty %}
+        <h2>No tasks</h2>
+        <div class="task" style="visibility: hidden;"></div>
+        {% endfor %}
+    </div>
+    <div class="column medium">
+        <h1>Urgent</h1>
+        {% for task in med_urgency %}
+        {% include "taskmaster/tasks.html" %}
+        {% empty %}
+        <h2>No tasks</h2>
+        <div class="task" style="visibility: hidden;"></div>
+        {% endfor %}
+    </div>
+    <div class="column low">
+        <h1>Not Urgent</h1>
+        {% for task in low_urgency %}
+        {% include "taskmaster/tasks.html" %}
+        {% empty %}
+        <h2>No tasks</h2>
+        <div class="task" style="visibility: hidden;"></div>
+        {% endfor %}
+    </div>
+    <div class="links">
+        <a class="buttonlink" href="{% url 'taskmaster:new' %}">
+            <div id="new" class="button navigation">
+                <div class="label normal_text">Add New Task</div>
+            </div>
+        </a>
+        <a class="buttonlink" href="{% url 'taskmaster:purge' %}" onClick="return confirm('Are you sure you want to delete these tasks?');">
+            <div id="purge" class="button navigation">
+                <div class="label normal_text">Delete Completed Tasks</div>
+            </div>
+        </a>
+        <a class="buttonlink" href="{% url 'taskmaster:logout' %}">
+            <div id="logout" class="button navigation">
+                <div class="label normal_text">Logout</div>
+            </div>
+        </a>
+        <div>
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-dark{% endif %}">{{ message }}</div>
             {% endfor %}
-        </div>
-        <div class="column medium">
-            <h1>Urgent</h1>
-            {% for task in med_urgency %}
-            {% include "taskmaster/tasks.html" %}
-            {% empty %}
-            <h1>No tasks</h1>
-            {% endfor %}
-        </div>
-        <div class="column low">
-            <h1>Not Urgent</h1>
-            {% for task in low_urgency %}
-            {% include "taskmaster/tasks.html" %}
-            {% empty %}
-            <h1>No tasks</h1>
-            {% endfor %}
-        </div>
-        <div class="links">
-            {% if user.is_authenticated %}
-            <div id="new" class="link">
-                <a href="{% url 'taskmaster:new' %}">
-                    <div class="label">Add New Task</div>
-                </a>
-            </div>
-            <div id="purge" class="link">
-                <a href="{% url 'taskmaster:purge' %}" onClick="return confirm('Are you sure you want to delete these tasks?');">
-                    <div class="label">Delete Completed Tasks</div>
-                </a>
-            </div>
-            <div id="logout" class="link">
-                <a href="{% url 'taskmaster:logout' %}">
-                    <div class="label">Logout</div>
-                </a>
-            </div>
-            {% else %}
-            <div id="login" class="link">
-                <a href="{% url 'taskmaster:login' %}">
-                    <div class="label">Login</div>
-                </a>
-            </div>
             {% endif %}
         </div>
     </div>
-</body>
+</div>
+{% else %}
+
+{% load static %}
+
+<div id="body" class="overlay" style="background-image: url('{% static 'taskmaster/logo.png' %}');">
+    <div class="title">Task Master</div>
+    <div class="subtitle">An application from <a href="https://spiffindustries.com/">Spiff Industries</a></h2></div>
+    <div class="links">
+        <a class="buttonlink" href="{% url 'taskmaster:login' %}">
+            <div id="login" class="button navigation">
+                <div class="label normal_text">Login</div>
+            </div>
+        </a>
+        <a class="buttonlink" href="{% url 'taskmaster:register' %}">
+            <div id="register" class="button navigation">
+                <div class="label normal_text">Register</div>
+            </div>
+        </a>
+        <div>
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-dark{% endif %}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endif %}
+
+{% endblock %}
