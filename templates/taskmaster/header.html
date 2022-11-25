@@ -16,6 +16,15 @@
         <link rel="stylesheet" href="{% static 'taskmaster/style.css' %}">
         <!-- Javascript -->
         <script src="{% static 'taskmaster/main.js' %}"></script>
+        <script src="https://www.google.com/recaptcha/api.js?render={{ reCAPTCHA_site_key }}"></script>
+        <script>
+            grecaptcha.ready(function () {
+                grecaptcha.execute('{{ reCAPTCHA_site_key }}', {action: 'validate_captcha'}).then(function (token) {
+                    console.info("got token: " + token);
+                    document.getElementById('g-recaptcha-response').value = token;
+                });
+            });
+        </script>
         <title>Task Master</title>
     </head>
     <body>

@@ -6,6 +6,8 @@ from django.contrib.auth import login, authenticate, logout
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm #add this
+from django.conf import settings
+import requests
 
 # Show all tasks and group by urgency (hence the three queries)
 class IndexView(generic.ListView):
@@ -71,35 +73,59 @@ def purge(request):
 
 # Register a user account
 def register_request(request):
-	if request.method == "POST":
-		form = NewUserForm(request.POST)
-		if form.is_valid():
-			user = form.save()
-			login(request, user)
-			messages.success(request, "Registration successful." )
-			return redirect('taskmaster:login')
-		messages.error(request, "Unsuccessful registration. Invalid information.")
-	form = NewUserForm()
-	return render (request=request, template_name="taskmaster/register.html", context={"register_form":form})
+    if request.method == "POST":
+        secret_key = settings.RECAPTCHA_SECRET_KEY
+        # captcha verification
+        data = {
+            'response': request.POST['g-recaptcha-response'],
+            'secret': secret_key
+        }
+        resp = requests.post('https://www.google.com/recaptcha/api/siteverify', data=data)
+        result_json = resp.json()
+        print(result_json)
+        if result_json.get('success'):
+            form = NewUserForm(request.POST)
+            if form.is_valid():
+                user = form.save()
+                login(request, user)
+                messages.success(request, "Registration successful." )
+                return redirect('taskmaster:login')
+            messages.error(request, "Unsuccessful registration. Invalid information.")
+        else:
+            messages.error(request, "If you identify as a robot, we have somewhere else for you to go")
+    form = NewUserForm()
+    return render (request=request, template_name="taskmaster/register.html", context={"register_form":form,'reCAPTCHA_site_key':settings.RECAPTCHA_SITE_KEY})
 
 # Log into a user account
 def login_request(request):
-	if request.method == "POST":
-		form = AuthenticationForm(request, data=request.POST)
-		if form.is_valid():
-			username = form.cleaned_data.get('username')
-			password = form.cleaned_data.get('password')
-			user = authenticate(username=username, password=password)
-			if user is not None:
-				login(request, user)
-				messages.info(request, f"You are now logged in as {username}.")
-				return redirect('taskmaster:index')
-			else:
-				messages.error(request,"Invalid username or password.")
-		else:
-			messages.error(request,"Invalid username or password.")
-	form = AuthenticationForm()
-	return render(request=request, template_name='taskmaster/login.html', context={"login_form":form})
+    if request.method == "POST":
+        secret_key = settings.RECAPTCHA_SECRET_KEY
+        # captcha verification
+        data = {
+            'response': request.POST['g-recaptcha-response'],
+            'secret': secret_key
+        }
+        resp = requests.post('https://www.google.com/recaptcha/api/siteverify', data=data)
+        result_json = resp.json()
+        print(result_json)
+        if result_json.get('success'):
+            form = AuthenticationForm(request, data=request.POST)
+            if form.is_valid():
+                username = form.cleaned_data.get('username')
+                password = form.cleaned_data.get('password')
+                user = authenticate(username=username, password=password)
+                if user is not None:
+                    login(request, user)
+                    messages.info(request, f"You are now logged in as {username}.")
+                    return redirect('taskmaster:index')
+                else:
+                    messages.error(request,"Invalid username or password.")
+            else:
+                messages.error(request,"Invalid username or password.")
+        else:
+            messages.error(request,"Would you real homo-sapien please stand up?")
+    form = AuthenticationForm()
+    return render(request=request, template_name='taskmaster/login.html', context={"login_form":form,'reCAPTCHA_site_key':settings.RECAPTCHA_SITE_KEY})
 
 # Log out of a user account
 def logout_request(request):

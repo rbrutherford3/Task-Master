@@ -12,6 +12,8 @@
 		{% csrf_token %}
 		{{ register_form|crispy }}                    
 		<button class="button label normal_text" style="float: left;" type="submit">Register</button>
+        <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
+        <input type="hidden" name="action" value="validate_captcha">
 	</form>
 	<p class="text-center">If you already have an account, <a href="{% url 'taskmaster:login' %}">login</a> instead.</p>
     <div>
