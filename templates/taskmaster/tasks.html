@@ -8,9 +8,7 @@
             {% if task.long_desc != Null %}{{ task.long_desc }}{% endif %}
             {% if task.due_date == Null and task.long_desc == Null %}No information{% endif %}
         </div>
-        <a class="buttonlink" href="{% url 'taskmaster:form' task.id %}">
-            <div class="edit button" style="display: none;" id="edit{{ task.pk }}">
-                <div class="label small_text">Edit</div>
-            </div>
-        </a>
+        <div class="edit button" style="display: none;" id="edit{{ task.pk }}" onclick="show_task({{ task.pk }});">
+            <div class="label small_text">Edit</div>
+        </div>
     </div>

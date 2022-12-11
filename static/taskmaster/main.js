@@ -16,9 +16,9 @@ function expand(id) {
 }
 
 // Change the color of the background with the importance selector
-function change_importance() {
-    var importance = document.getElementById("importance").value;
-    var detail = document.getElementById("detail")
+function change_importance(id) {
+    var importance = document.getElementById("importance" + id).value;
+    var detail = document.getElementById("detail" + id)
     detail.classList.remove("low");
     detail.classList.remove("medium");
     detail.classList.remove("high");
@@ -30,15 +30,10 @@ function change_importance() {
         detail.classList.add("high");
 }
 
-// If any change is made, then raise the flag
-function changed() {
-    document.getElementById("changes_made").value = 1;
+function show_new() {
+    document.getElementById('new_task').style.display = "block";
 }
 
-// Prevent a user from leaving site with unsaved changes
-function unsaved_changes() {
-    if (document.getElementById("changes_made").value > 0)
-        return confirm("You have unsaved changes.  Are you sure you wish to exit?");
-    else
-        return true;
+function show_task(id) {
+    document.getElementById(id).style.display = "block";
 }

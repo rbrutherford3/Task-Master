@@ -19,6 +19,7 @@ class IndexView(generic.ListView):
             context['low_urgency'] = Task.objects.filter(user=self.request.user.username).filter(urgency=0).order_by('-importance')
             context['med_urgency'] = Task.objects.filter(user=self.request.user.username).filter(urgency=1).order_by('-importance')
             context['high_urgency'] = Task.objects.filter(user=self.request.user.username).filter(urgency=2).order_by('-importance')
+            context['all_tasks'] = Task.objects.filter(user=self.request.user.username)
         else:
             context = None
         return context

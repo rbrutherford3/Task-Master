@@ -60,6 +60,18 @@ a {
     position: relative;
     width: 220px;
 }
+.backdrop {
+    display: none;
+    position: absolute;
+    float: left;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+}
+.detailcontainer {
+    position: absolute;
+    float: left;
+}
 .detail {
     min-width: 200px;
     margin: 10px;
