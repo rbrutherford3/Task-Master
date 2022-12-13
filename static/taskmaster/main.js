@@ -31,9 +31,17 @@ function change_importance(id) {
 }
 
 function show_new() {
+    window.scrollTo(0, 0);
     document.getElementById('new_task').style.display = "block";
+    document.body.style.overflow = "hidden";
 }
 
 function show_task(id) {
+    window.scrollTo(0, 0);
     document.getElementById(id).style.display = "block";
+    document.body.style.overflow = "hidden";
+}
+
+function hide() {
+    location.reload();
 }

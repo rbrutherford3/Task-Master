@@ -75,6 +75,9 @@
                         <div class="table-cell no_bottom">
                             <input class="button label small_text no_bottom center" type="submit" name="action" value="Save">
                         </div>
+                        <div class="table-cell no_bottom" onclick="hide();">
+                            <input class="button label small_text no_bottom center" type="button" value="Cancel"></button>
+                        </div>
                     </div>
                 </div>
                 <input type="hidden" id="changes_made" value="0">
@@ -83,7 +86,7 @@
         </div>
     </div>
     {% for task in all_tasks %}
-    <div id="{{ task.id }}" class="backdrop">
+    <div id="{{ task.pk }}" class="backdrop">
         <div class="detailcontainer">
             <form action="{% url 'taskmaster:save' %}" method="POST">
                 <input type="hidden" name="pk" id="pk" value="{{ task.pk }}">
@@ -108,6 +111,9 @@
                         </div>
                         <div class="table-cell">
                             <input class="button label small_text no_bottom center" type="submit" name="action" value="Delete" onClick="return confirm('Are you sure you want to delete this task?');">
+                        </div>
+                        <div class="table-cell no_bottom" onclick="hide();">
+                            <input class="button label small_text no_bottom center" type="button" value="Cancel"></button>
                         </div>
                     </div>
                 </div>
