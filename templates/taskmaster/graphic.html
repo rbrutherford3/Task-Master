@@ -96,12 +96,12 @@
                     <input type="time" class="task_input full_width" id="due_time{{ task.pk }}" name="due_time" value="{{ task.due_time|time:'H:i' }}">
                     <select class="task_input no_bottom full_width" name="importance" id="importance{{ task.pk }}" onChange="change_importance({{ task.pk }});">
                         <option value="0"{% if task.importance == 0 %} selected{% endif %}>Low Importance</option>
-                        <option value="1"{% if object is Null or task.importance == 1 %} selected{% endif %}>Medium Importance</option>
+                        <option value="1"{% if task.importance == 1 %} selected{% endif %}>Medium Importance</option>
                         <option value="2"{% if task.importance == 2 %} selected{% endif %}>High Importance</option>
                     </select>
                     <select class="task_input full_width" name="urgency" id="urgency{{ task.pk }}">
                         <option value="0"{% if task.urgency == 0 %} selected{% endif %}>Low Urgency</option>
-                        <option value="1"{% if object is Null or task.urgency == 1 %} selected{% endif %}>Medium Urgency</option>
+                        <option value="1"{% if task.urgency == 1 %} selected{% endif %}>Medium Urgency</option>
                         <option value="2"{% if task.urgency == 2 %} selected{% endif %}>High Urgency</option>
                     </select>
                     <textarea class="task_input full_width" id="long_desc{{ task.pk }}" name="long_desc" placeholder="Description">{% if task.long_desc == Null %}{% else %}{{ task.long_desc }}{% endif %}</textarea>
