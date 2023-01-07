@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.views import generic
 from .models import Task
 from .forms import NewUserForm
-from django.contrib.auth import login, authenticate, logout
+from django.contrib.auth import login, authenticate, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm #add this
@@ -14,9 +14,10 @@ from django.contrib.auth.forms import PasswordResetForm
 from django.contrib.auth.models import User
 from django.template.loader import render_to_string
 from django.db.models.query_utils import Q
-from django.utils.http import urlsafe_base64_encode
+from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
-from django.utils.encoding import force_bytes
+from django.utils.encoding import force_bytes, force_str
+from django.core.mail import EmailMessage
 from django.contrib.sites.shortcuts import get_current_site
 import requests
 
@@ -83,6 +84,22 @@ def purge(request):
         task.delete()
     return redirect('taskmaster:index')
 
+def activateEmail(request, user, to_email):
+    mail_subject = 'Activate your user account.'
+    message = render_to_string('taskmaster/activate_account_email.txt', {
+        'user': user.username,
+        'domain': get_current_site(request).domain,
+        'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+        'token': default_token_generator.make_token(user),
+        'protocol': 'https' if request.is_secure() else 'http'
+    })
+    email = EmailMessage(mail_subject, message, to=[to_email], from_email="no-reply@spiffindustries.com")
+    if email.send():
+        messages.success(request, "Please go to you email inbox and click on \
+            received activation link to confirm and complete the registration. Note: Check your spam folder.")
+    else:
+        messages.error(request, "Problem sending confirmation email, check if you typed it correctly.")
+
 # Register a user account
 def register_request(request):
     if request.method == "POST":
@@ -99,14 +116,32 @@ def register_request(request):
             form = NewUserForm(request.POST)
             if form.is_valid():
                 user = form.save()
-                login(request, user)
-                messages.success(request, "Registration successful." )
-                return redirect('taskmaster:login')
+                user.is_active=False
+                user.save()
+                activateEmail(request, user, form.cleaned_data.get('email'))
+                return redirect('taskmaster:index')
             messages.error(request, "Unsuccessful registration. Invalid information.")
         else:
             messages.error(request, "If you identify as a robot, we have somewhere else for you to go")
     form = NewUserForm()
     return render (request=request, template_name="taskmaster/register.html", context={"register_form":form,'reCAPTCHA_site_key':settings.RECAPTCHA_SITE_KEY})
+
+def activate(request, uidb64, token):
+    User = get_user_model()
+    try:
+        uid = force_str(urlsafe_base64_decode(uidb64))
+        user = User.objects.get(pk=uid)
+    except(TypeError, ValueError, OverflowError, User.DoesNotExist):
+        user = None
+    if user is not None and default_token_generator.check_token(user, token):
+        user.is_active = True
+        user.save()
+        messages.success(request, 'Thank you for your email confirmation. Now you can log in your account.')
+        return redirect('taskmaster:login')
+    else:
+        messages.error(request, 'Activation link is invalid!')
+    
+    return redirect('taskmaster:index')
 
 # Log into a user account
 def login_request(request):
