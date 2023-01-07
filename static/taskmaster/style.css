@@ -174,3 +174,6 @@ input[type="checkbox"] {
     color: white;
     font-weight: bold;
 }
+p {
+    clear: left;
+}

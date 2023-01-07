@@ -15,7 +15,8 @@
         <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
         <input type="hidden" name="action" value="validate_captcha">
     </form>
-    <p class="text-center">Don't have an account? <a href="{% url 'taskmaster:register' %}">Create an account</a>.</p>
+    <p>Forgot your password? <a href="{% url 'taskmaster:password_reset' %}">Reset it here</a>.</p>
+    <p>Don't have an account? <a href="{% url 'taskmaster:register' %}">Create an account</a>.</p>
     <div>
         {% if messages %}
         {% for message in messages %}
