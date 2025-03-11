@@ -40,9 +40,10 @@ Install Django:
 ```
 python -m pip install Django
 ```
-Install Django Crispy Forms:
+Install Django Crispy Forms and bootstrap for Crispy:
 ```
 python -m pip install django-crispy-forms
+python -m pip install crispy-bootstrap4
 ```
 Create a Django project:
 ```
@@ -68,7 +69,7 @@ INSTALLED_APPS = [
     'django.contrib.staticfiles',
 ]
 ```
-Add the lines ``'taskmaster.apps.taskmasterConfig'`` and ``'crispy_forms'`` so it now reads:
+Add the lines ``'taskmaster.apps.taskmasterConfig'``,  ``'crispy_forms'``, and ``'crispy_bootstrap4'`` so it now reads:
 ```
 INSTALLED_APPS = [
     'taskmaster.apps.taskmasterConfig',
@@ -79,6 +80,7 @@ INSTALLED_APPS = [
     'django.contrib.messages',
     'django.contrib.staticfiles',
     'crispy_forms',
+    'crispy_bootstrap4',
 ]
 ```
 Scroll down to the databases portion, which should read something like:
@@ -100,6 +102,12 @@ Scroll down to the timezone setting:
 ```
 TIME_ZONE = 'UTC'
 ```
+
+Add this line to the end of the file:
+```
+CRISPY_TEMPLATE_PACK = 'bootstrap4'
+```
+
 Find your [timezone code](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) and substitute it for ``'UTC'`` so it now reads something like:
 ```
 TIME_ZONE = 'America/New_York'
