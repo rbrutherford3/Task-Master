@@ -210,7 +210,7 @@ def password_reset_request(request):
         else:
             messages.error(request, 'An invalid email has been entered.')
     password_reset_form = PasswordResetForm()
-    return render(request=request, template_name="taskmaster/password/password_reset.html", context={"password_reset_form":password_reset_form})
+    return render(request=request, template_name="taskmaster/password/password_reset.html", context={"password_reset_form":password_reset_form,'reCAPTCHA_site_key':settings.RECAPTCHA_SITE_KEY})
 
 def password_reset_complete(request):
     messages.success(request, "Your password has been successfully reset, you may now log in")
