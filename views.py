@@ -93,7 +93,7 @@ def activateEmail(request, user, to_email):
         'token': default_token_generator.make_token(user),
         'protocol': 'https' if request.is_secure() else 'http'
     })
-    email = EmailMessage(mail_subject, message, to=[to_email], from_email="no-reply@taskmaster.spiffindustries.com")
+    email = EmailMessage(mail_subject, message, to=[to_email], from_email="Task Master <no-reply@taskmaster.spiffindustries.com>")
     if email.send():
         messages.success(request, "Please go to you email inbox and click on \
             received activation link to confirm and complete the registration. Note: Check your spam folder.")
@@ -191,7 +191,8 @@ def password_reset_request(request):
                     subject = "Password Reset Requested"
                     email_template_name = "taskmaster/password/password_reset_email.txt"
                     c = {
-                    'email':user.email,
+                    'user': user.username,
+                    'email': user.email,
                     'domain': get_current_site(request).domain,
                     'site_name': 'Spiff Industries',
                     'uid': urlsafe_base64_encode(force_bytes(user.pk)),
@@ -200,7 +201,7 @@ def password_reset_request(request):
                     }
                     email = render_to_string(email_template_name, c)
                     try:
-                        send_mail(subject, email, 'no-reply@taskmaster.spiffindustries.com' , [user.email], fail_silently=False)
+                        send_mail(subject, email, 'Task Master <no-reply@taskmaster.spiffindustries.com>', [user.email], fail_silently=False)
                     except BadHeaderError:
                         return HttpResponse('Invalid header found.')
                     messages.success(request, 'A message with reset password instructions has been sent to your inbox.')

@@ -1,5 +1,7 @@
 {% autoescape off %}
-Hi {{ user.username }},
+Welcome to Task Master!
+
+Your new username is {{ user }}
 
 Please click on the link below to confirm your registration:
 
