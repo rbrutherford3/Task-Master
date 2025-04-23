@@ -4,7 +4,7 @@
 
 ![TaskMaster logo](TaskMaster0.png "TaskMaster logo")
 
-Task Master is a task management software created by Spiff Industries for standard desktop browsers available at [https://taskmaster.spiffindustries.com/](https://taskmaster.spiffindustries.com/).  It allows the user to easily create, edit, and check off tasks that can be optionally descriptive.  The level of detail is up to the user.  It employs the principles of importance and urgency as described in [*The 7 Habits of Highly Effective People&#174;*](https://www.franklincovey.com/the-7-habits/) by Steven Covey.  This software attempts to bring that system of efficiency to the 21st century.
+Task Master is a task management software created by Spiff Industries for standard desktop browsers available at [https://spiffindustries.com/taskmaster/](https://spiffindustries.com/taskmaster/).  It allows the user to easily create, edit, and check off tasks that can be optionally descriptive.  The level of detail is up to the user.  It employs the principles of importance and urgency as described in [*The 7 Habits of Highly Effective People&#174;*](https://www.franklincovey.com/the-7-habits/) by Steven Covey.  This software attempts to bring that system of efficiency to the 21st century.
 
 ## Table of Contents
 
