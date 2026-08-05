@@ -1,0 +1,179 @@
+.high {
+    background-color: rgb(180, 0, 0);
+}
+.medium {
+    background-color: rgb(180, 180, 0);
+}
+.low {
+    background-color: rgb(0, 180, 0);
+}
+h1, h2, .label, .details, input, select, textarea {
+    font-family: Arial, Helvetica, sans-serif;
+    color: black;
+}
+.label {
+    font-weight: bold;
+    font-size: medium;
+    cursor: pointer;
+    display: inline;
+}
+.details {
+    display: none;
+    font-size: small;
+    font-weight: normal;
+    min-height: 30px;
+    max-width: 175px;
+}
+h1 {
+    font-size: medium;
+    font-weight: bold;
+}
+h2 {
+    font-size: medium;
+    font-weight: normal;
+}
+a {
+    text-decoration: none;
+    font-weight: normal;
+    outline: none;
+}
+.column {
+    float: left;
+    text-align: center;
+    border-right: 5px solid black;
+    border-bottom: 5px solid black;
+    padding: 0 10px;
+    height: 100vh;
+    padding-top: 10px;
+}
+.task, .detail, .button {
+    text-align: left;
+    display: table;
+    border: 1px solid black;
+    box-shadow: 2px 2px 2px;
+    padding: 5px;
+    border-radius: 5px;
+    margin: 5px 0;
+    font-weight: bold;
+}
+.task {
+    position: relative;
+    width: 220px;
+}
+.backdrop {
+    display: none;
+    position: absolute;
+    float: left;
+    width: 100%;
+    height: 100%;
+    background: rgba(0, 0, 0, 0.7);
+}
+.detailcontainer {
+    position: absolute;
+    float: left;
+}
+.detail {
+    min-width: 200px;
+    margin: 10px;
+}
+.links {
+    position: fixed;
+    bottom: 10px;
+    right: 10px;
+}
+.button {
+    background-color: rgb(180, 180, 180);
+    text-align: center;
+    padding: 0px 5px;
+}
+.navigation {
+    margin-left: auto;
+    margin-right: 0;
+}
+.normal_text {
+    font-size: medium;
+}
+.small_text {
+    font-size: small;
+}
+.task_input {
+    display: block;
+    border: 1px solid black;
+    padding: 1px 2px;
+    width: calc(100% - 6px);
+    min-width: min-content;
+    margin: 0;
+    margin-bottom: 5px;
+    font-size: small;
+}
+.no_bottom {
+    margin-bottom: 0;
+}
+.full_width {
+    width: 100%;
+}
+textarea {
+    resize: none;
+}
+input[type="checkbox"] {
+    float: right;
+}
+.table {
+    display: table;
+}
+.table-cell {
+    display: table-cell;
+}
+.center {
+    margin: 0 auto;
+}
+.edit {
+    position: absolute;
+    display: none;
+    bottom: 0;
+    right: 5px;
+    margin-left: 5px;
+}
+.buttonlink {
+    text-decoration: none;
+    color: black;
+}
+.buttonlink:hover {
+    text-decoration: none;
+    color: black;
+}
+.overlay{
+    position:fixed;
+    width: 100%;
+    height: 100%;
+    top: 0px;
+    left: 0px;
+    background-size: cover;
+    background-position: center top;
+    background-repeat: no-repeat;
+}
+.title {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: bolder;
+    color: white;
+    font-size: 10vw;
+    text-align: center;
+    width: 100%;
+    text-shadow: .1vw .1vw black;
+}
+.subtitle {
+    font-family: Arial, Helvetica, sans-serif;
+    font-weight: normal;
+    color: white;
+    font-size: 3vw;
+    text-align: center;
+    width: 100%;
+    text-shadow: .1vw .1vw black;
+}
+.subtitle a {
+    color: white;
+    font-weight: bold;
+}
+p {
+    clear: left;
+}

@@ -1,0 +1,9 @@
+{% autoescape off %}
+Welcome to Task Master!
+
+Your new username is {{ user }}
+
+Please click on the link below to confirm your registration:
+
+{{ protocol }}://{{ domain }}{% url 'taskmaster:activate' uidb64=uid token=token %}
+{% endautoescape %}

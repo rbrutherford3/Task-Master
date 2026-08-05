@@ -3,12 +3,9 @@ from django.views import generic
 from .models import Task
 from .forms import NewUserForm
 from django.contrib.auth import login, authenticate, logout, get_user_model
-from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.contrib.auth.forms import AuthenticationForm #add this
+from django.contrib.auth.forms import AuthenticationForm
 from django.conf import settings
-from django.shortcuts import render, redirect
-from django.core.mail import send_mail, BadHeaderError
 from django.http import HttpResponse
 from django.contrib.auth.forms import PasswordResetForm
 from django.contrib.auth.models import User
@@ -17,9 +14,37 @@ from django.db.models.query_utils import Q
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes, force_str
-from django.core.mail import EmailMessage
 from django.contrib.sites.shortcuts import get_current_site
 import requests
+
+RESEND_API_URL = "https://api.resend.com/emails"
+
+
+def resend_send_email(subject, to, text=None, html=None):
+    payload = {
+        "from": settings.DEFAULT_FROM_EMAIL,
+        "to": to,
+        "subject": subject,
+    }
+    if html is not None:
+        payload["html"] = html
+    if text is not None:
+        payload["text"] = text
+
+    response = requests.post(
+        RESEND_API_URL,
+        headers={
+            "Authorization": f"Bearer {settings.RESEND_API_KEY}",
+            "Content-Type": "application/json",
+        },
+        json=payload,
+        timeout=10,
+    )
+    if not response.ok:
+        raise RuntimeError(f"Resend API error {response.status_code}: {response.text}")
+    return response.json()
+
+from .recaptchav3 import verify_recaptcha
 
 # Show all tasks and group by urgency (hence the three queries)
 class IndexView(generic.ListView):
@@ -39,11 +64,11 @@ class IndexView(generic.ListView):
 # Edit an existing task
 class TaskFormView(generic.DetailView):
      model = Task
-     template_name = 'taskmaster/form.html'
+     template_name = 'taskmaster/graphic.html'
 
 # Create new task
 def new_task(request):
-    return render(request, 'taskmaster/form.html')
+    return render(request, 'taskmaster/graphic.html')
 
 # Save new task, save edited task, or delete a task
 # (note that some fields require completion validation)
@@ -93,25 +118,23 @@ def activateEmail(request, user, to_email):
         'token': default_token_generator.make_token(user),
         'protocol': 'https' if request.is_secure() else 'http'
     })
-    email = EmailMessage(mail_subject, message, to=[to_email], from_email="Task Master <no-reply@taskmaster.spiffindustries.com>")
-    if email.send():
+    try:
+        resend_send_email(mail_subject, to_email, text=message)
         messages.success(request, "Please go to you email inbox and click on \
             received activation link to confirm and complete the registration. Note: Check your spam folder.")
-    else:
+    except Exception:
         messages.error(request, "Problem sending confirmation email, check if you typed it correctly.")
 
 # Register a user account
 def register_request(request):
     if request.method == "POST":
         secret_key = settings.RECAPTCHA_SECRET_KEY
-        # captcha verification
-        data = {
-            'response': request.POST['g-recaptcha-response'],
-            'secret': secret_key
-        }
-        resp = requests.post('https://www.google.com/recaptcha/api/siteverify', data=data)
-        result_json = resp.json()
-        print(result_json)
+        try:
+            result_json = verify_recaptcha(request.POST.get('g-recaptcha-response'), secret_key=secret_key)
+        except requests.RequestException:
+            messages.error(request, "reCAPTCHA verification could not be completed.")
+            form = NewUserForm()
+            return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
         if result_json.get('success'):
             form = NewUserForm(request.POST)
             if form.is_valid():
@@ -147,14 +170,12 @@ def activate(request, uidb64, token):
 def login_request(request):
     if request.method == "POST":
         secret_key = settings.RECAPTCHA_SECRET_KEY
-        # captcha verification
-        data = {
-            'response': request.POST['g-recaptcha-response'],
-            'secret': secret_key
-        }
-        resp = requests.post('https://www.google.com/recaptcha/api/siteverify', data=data)
-        result_json = resp.json()
-        print(result_json)
+        try:
+            result_json = verify_recaptcha(request.POST.get('g-recaptcha-response'), secret_key=secret_key)
+        except requests.RequestException:
+            messages.error(request, "reCAPTCHA verification could not be completed.")
+            form = AuthenticationForm()
+            return render(request=request, template_name='taskmaster/login.html', context={"login_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
         if result_json.get('success'):
             form = AuthenticationForm(request, data=request.POST)
             if form.is_valid():
@@ -201,9 +222,9 @@ def password_reset_request(request):
                     }
                     email = render_to_string(email_template_name, c)
                     try:
-                        send_mail(subject, email, 'Task Master <no-reply@taskmaster.spiffindustries.com>', [user.email], fail_silently=False)
-                    except BadHeaderError:
-                        return HttpResponse('Invalid header found.')
+                        resend_send_email(subject, user.email, text=email)
+                    except Exception:
+                        return HttpResponse('Problem sending reset password email.')
                     messages.success(request, 'A message with reset password instructions has been sent to your inbox.')
                     return redirect ("taskmaster:index")
             else:
