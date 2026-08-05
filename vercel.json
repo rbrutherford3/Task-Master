@@ -1,0 +1,25 @@
+{
+  "$schema": "https://openapi.vercel.sh/vercel.json",
+  "version": 2,
+  "builds": [
+    {
+      "src": "taskmaster_site/wsgi.py",
+      "use": "@vercel/python"
+    },
+    {
+      "src": "staticfiles/**",
+      "use": "@vercel/static"
+    }
+  ],
+  "buildCommand": "python3 manage.py collectstatic --noinput",
+  "rewrites": [
+    {
+      "source": "/static/(.*)",
+      "destination": "/staticfiles/$1"
+    },
+    {
+      "source": "/(.*)",
+      "destination": "taskmaster_site/wsgi.py"
+    }
+  ]
+}

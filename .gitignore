@@ -1,3 +1,6 @@
 __pycache__/
 migrations/
 reset_tasks
+.venv/
+local_settings.py
+db.sqlite3

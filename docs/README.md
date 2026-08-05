@@ -17,124 +17,94 @@ Task Master is a task management software created by Spiff Industries for standa
 
 ### Background
 
-TaskMaster was released as an [Android app on Google Play](https://play.google.com/store/apps/details?id=com.rsquared.taskmaster&hl=en&gl=US) in 2020.  It was not successful and had many development problems that made it difficult to create new versions.  Although visually appealing, the tasks themselves had too much granularity for importance and urgency to make it practical.  This version of TaskMaster attempts to simplify the process and broaden the market.  It introduces the use of cookies and user accounts and is deployed on the spiffindustries.com AWS server.  Once this release is stable, the next version will introduce Android and iPhone apps that can employ the same user accounts.
+TaskMaster was released as an Android app on Google Play in 2020.  It was not successful and had many development problems that made it difficult to create new versions.  Although visually appealing, the tasks themselves had too much granularity for importance and urgency to make it practical.  This version of TaskMaster attempts to simplify the process and broaden the market.  It introduces the use of cookies and user accounts and is deployed on the spiffindustries.com AWS server.  Once this release is stable, the next version will introduce Android and iPhone apps that can employ the same user accounts.
 
 ## Install
 
-### Django Installation
+### 1. Install Python
 
-If you are new to **Django**, please refer to [https://docs.djangoproject.com/en/4.1/intro/](https://docs.djangoproject.com/en/4.1/intro/) and follow the instructions for creating a site and a project.  More experienced users simply need to create a ``TaskMaster`` project in their **Django** site folder and download all the project files to that folder.  The exact procedure will depend on the operating system used and is covered in detail in the above link.  **Gunicorn** is recommended for production.
+Task Master is developed against Python 3.12. The repository includes a `runtime.txt` file that pins the same version, so using Python 3.12 locally is the safest choice.
 
-### Database setup
+If you need to install Python, follow the instructions for your operating system from [python.org](https://www.python.org/downloads/). On Linux, make sure `python3` and `pip` are available before continuing.
 
-The database used for development was **MySQL**, but **Django** is set up in such a way that different databases could be used for the same model.  The important thing is that the ``settings.py`` file in your **Django** site is set up with database access, regardless of the system you use.  Before running the **Django** server, the user must migrate the database.  Specific instructions are available in [this tutorial](https://docs.djangoproject.com/en/4.1/intro/tutorial02/) and in the example setup below.
+### 2. Create a virtual environment
 
-### Example setup
+Create a project directory and a virtual environment, then activate it:
 
-The following is an example setup for running the TaskMaster **Django** project on a Linux server.  This set of instructions assumes successful installation of **Python**, **pip**, and a database engine to be determined by the user.
-* Depending on your folder and setup, you may have to add the `sudo` keyword to these commands and/or use `python3` instead of `python`
-
-As mentioned above, you will have to configure your database.  Specifically, you must add a database to your schema that is dedicated solely to the **Django** project (including all **Django** apps) and add a user that has full permissions to that database whose password you don't mind adding to a local text file.
-
-Install Django:
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
 ```
+
+If your system uses a different Python command, replace `python3` with the correct executable.
+
+### 3. Install pip and the project dependencies
+
+Make sure `pip` is available, then install the required packages from `requirements.txt`:
+
+```bash
+python -m pip install --upgrade pip
+python -m pip install -r requirements.txt
+```
+
+The project depends on Django, `django-crispy-forms`, `crispy-bootstrap4`, `psycopg2-binary`, `requests`, `resend`, and `whitenoise`, so installing from the requirements file is the easiest way to keep everything aligned.
+
+If you prefer to install packages individually, the core pieces are:
+
+```bash
 python -m pip install Django
-```
-Install Django Crispy Forms and bootstrap for Crispy:
-```
 python -m pip install django-crispy-forms
 python -m pip install crispy-bootstrap4
-```
-Create a Django project:
-```
-django-admin startproject mysite
-```
-Open the settings file:
-```
-nano mysite/settings.py
-```
-Change the following:
-1. Add the TaskMaster app to the list of installed apps
-1. Configure the database
-1. Change the timezone
-
-Scroll down to the list of installed apps:
-```
-INSTALLED_APPS = [
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-]
-```
-Add the lines ``'taskmaster.apps.taskmasterConfig'``,  ``'crispy_forms'``, and ``'crispy_bootstrap4'`` so it now reads:
-```
-INSTALLED_APPS = [
-    'taskmaster.apps.taskmasterConfig',
-    'django.contrib.admin',
-    'django.contrib.auth',
-    'django.contrib.contenttypes',
-    'django.contrib.sessions',
-    'django.contrib.messages',
-    'django.contrib.staticfiles',
-    'crispy_forms',
-    'crispy_bootstrap4',
-]
-```
-Scroll down to the databases portion, which should read something like:
-```
-DATABASES = {
-    'default': {
-        'ENGINE': 'django.db.backends.mysql', 
-        'NAME': 'DB_NAME',
-        'USER': 'DB_USER',
-        'PASSWORD': 'DB_PASSWORD',
-        'HOST': 'localhost',   # Or an IP Address that your DB is hosted on
-        'PORT': '3306',
-    }
-}
-```
-For this portion, you must determine your own database setup.  Whatever engine you use, it is important that you create a **Django** database and enter the database name and credentials in the above settings for a successful connection.  See [this](https://docs.djangoproject.com/en/4.1/topics/install/#database-installation) for more information.
-
-Scroll down to the timezone setting:
-```
-TIME_ZONE = 'UTC'
+python -m pip install psycopg2-binary
+python -m pip install requests
+python -m pip install resend
+python -m pip install whitenoise
 ```
 
-Add this line to the end of the file:
-```
-CRISPY_TEMPLATE_PACK = 'bootstrap4'
-```
+### 4. Install Django
 
-Find your [timezone code](https://en.wikipedia.org/wiki/List_of_tz_database_time_zones) and substitute it for ``'UTC'`` so it now reads something like:
-```
-TIME_ZONE = 'America/New_York'
-```
-Create the taskmaster app:
-```
-python manage.py startapp taskmaster
-```
-Download the TaskMaster project and add the files:
-```
-cd mysite/taskmaster
-rm -r *
+Django is already listed in `requirements.txt`, so the `pip install -r requirements.txt` step above is normally enough. If you are setting up the environment manually, install Django first and then the rest of the packages.
+
+### 5. Download the project files from GitHub
+
+Clone the repository into your workspace directory:
+
+```bash
 git clone https://github.com/rbrutherford3/Task-Master.git .
 ```
-Prepare the TaskMaster database model:
+
+If you are updating an existing checkout, pull the latest changes instead of removing files manually.
+
+If you prefer to deploy instead of running locally, Vercel is also an option. The repository includes a `vercel.json` file for that workflow.
+
+### 6. Configure `local_settings.py`
+
+The project reads local secrets and database settings from `local_settings.py` if the file exists. Create it in the project root and define the values your environment needs.
+
+```python
+RESEND_API_KEY = "your-resend-api-key"
+RECAPTCHA_SITE_KEY = "your-recaptcha-site-key"
+RECAPTCHA_SECRET_KEY = "your-recaptcha-secret-key"
+DATABASE_URL = "postgresql://user:password@localhost:5432/taskmaster"
 ```
-python manage.py makemigrations taskmaster
-```
-Set up the database:
-```
+
+`DATABASE_URL` can point to PostgreSQL or MySQL. If it is omitted, the project falls back to SQLite for local development. PostgreSQL support uses psycopg2-binary; if you use MySQL, install the appropriate MySQL driver for your environment.
+
+If you deploy on Vercel, the same values from `local_settings.py` should be entered as environment variables in the Vercel project settings.
+
+### 7. Finish the Django setup
+
+Run the Django database setup commands and start the development server:
+
+```bash
+python manage.py makemigrations
 python manage.py migrate
-```
-Run the server:
-```
 python manage.py runserver
 ```
-Open your browser and navigate to ``localhost:8000/taskmaster`` (or ``127.0.0.1:8000/taskmaster``)
+
+Open your browser and navigate to `http://127.0.0.1:8000/`.
+
+If you want to use a different timezone, update `TIME_ZONE` in `taskmaster_site/settings.py`. The project currently defaults to `America/New_York`.
 
 ## Usage
 
@@ -166,3 +136,4 @@ Contributions are welcome, including any feedback.  Please contact rbrutherford3
 * Thanks to my parents for everything
 * Thanks to my sister for this computer
 * Thanks to Colby Sainato for actually looking at this
+* Thanks to Kendall Griffith for also actually looking at this :)
