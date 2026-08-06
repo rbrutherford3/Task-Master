@@ -97,34 +97,51 @@ class SettingsFlowTest(TestCase):
 
     def setUp(self):
         self.user = User.objects.create_user(
-            username='oldname',
+            username='old@example.com',
             email='old@example.com',
             password='test-password-123'
         )
         self.client.force_login(self.user)
 
-    def test_username_change_updates_task_user_field(self):
+    @patch('taskmaster.views.send_settings_confirmation_email')
+    def test_email_change_updates_user_identity_and_task_owner_on_confirmation(self, mock_send_settings_confirmation_email):
         task = Task.objects.create(
-            user='oldname',
-            short_desc='Task linked to username',
+            user='old@example.com',
+            short_desc='Task linked to email identity',
             importance=1,
             urgency=1,
             completed=False,
         )
 
-        response = self.client.post(
+        request_response = self.client.post(
             reverse('taskmaster:settings'),
             {
-                'action': 'username',
-                'username': 'newname',
+                'action': 'email',
+                'email': 'new@example.com',
             }
         )
+        self.assertEqual(request_response.status_code, 302)
+        self.assertEqual(mock_send_settings_confirmation_email.call_count, 1)
 
-        self.assertEqual(response.status_code, 302)
+        signed_payload = signing.dumps(
+            {
+                'action': 'email_change',
+                'uid': self.user.pk,
+                'new_email': 'new@example.com',
+            },
+            salt=SETTINGS_CONFIRM_SALT,
+        )
+
+        confirm_response = self.client.get(
+            reverse('taskmaster:settings_confirm', args=(signed_payload,))
+        )
+
+        self.assertEqual(confirm_response.status_code, 302)
         self.user.refresh_from_db()
         task.refresh_from_db()
-        self.assertEqual(self.user.username, 'newname')
-        self.assertEqual(task.user, 'newname')
+        self.assertEqual(self.user.username, 'new@example.com')
+        self.assertEqual(self.user.email, 'new@example.com')
+        self.assertEqual(task.user, 'new@example.com')
 
     @patch('taskmaster.views.send_settings_confirmation_email')
     def test_email_change_is_not_applied_until_confirmation(self, mock_send_settings_confirmation_email):
@@ -158,10 +175,28 @@ class SettingsFlowTest(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, 'new@example.com')
 
+    def test_email_change_duplicate_shows_in_use_message(self):
+        User.objects.create_user(
+            username='taken@example.com',
+            email='taken@example.com',
+            password='test-password-123',
+        )
+
+        response = self.client.post(
+            reverse('taskmaster:settings'),
+            {
+                'action': 'email',
+                'email': 'taken@example.com',
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'That email address is already in use.')
+
     @patch('taskmaster.views.send_settings_confirmation_email')
     def test_account_delete_happens_only_after_confirmation(self, mock_send_settings_confirmation_email):
         Task.objects.create(
-            user='oldname',
+            user='old@example.com',
             short_desc='Task to be deleted with account',
             importance=1,
             urgency=1,
@@ -177,7 +212,7 @@ class SettingsFlowTest(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(mock_send_settings_confirmation_email.call_count, 1)
         self.assertTrue(User.objects.filter(pk=self.user.pk).exists())
-        self.assertEqual(Task.objects.filter(user='oldname').count(), 1)
+        self.assertEqual(Task.objects.filter(user='old@example.com').count(), 1)
 
         signed_payload = signing.dumps(
             {
@@ -192,39 +227,19 @@ class SettingsFlowTest(TestCase):
         )
         self.assertEqual(confirm_response.status_code, 302)
         self.assertFalse(User.objects.filter(pk=self.user.pk).exists())
-        self.assertEqual(Task.objects.filter(user='oldname').count(), 0)
+        self.assertEqual(Task.objects.filter(user='old@example.com').count(), 0)
 
 
 class RegistrationFlowTest(TestCase):
 
     @patch('taskmaster.views.verify_recaptcha')
-    def test_register_step_one_username_error_has_priority(self, mock_verify_recaptcha):
-        mock_verify_recaptcha.return_value = {'success': True}
-        User.objects.create_user(username='takenuser', email='first@example.com', password='x-12345-Abc')
-        User.objects.create_user(username='differentuser', email='taken@example.com', password='x-12345-Abc')
-
-        response = self.client.post(
-            reverse('taskmaster:register'),
-            {
-                'username': 'takenuser',
-                'email': 'taken@example.com',
-                'g-recaptcha-response': 'token',
-            }
-        )
-
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'That username is already taken.')
-        self.assertNotContains(response, 'That email address is already in use.')
-
-    @patch('taskmaster.views.verify_recaptcha')
     def test_register_step_one_email_taken_message(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
-        User.objects.create_user(username='anotheruser', email='taken@example.com', password='x-12345-Abc')
+        User.objects.create_user(username='taken@example.com', email='taken@example.com', password='x-12345-Abc')
 
         response = self.client.post(
             reverse('taskmaster:register'),
             {
-                'username': 'newuser',
                 'email': 'taken@example.com',
                 'g-recaptcha-response': 'token',
             }
@@ -232,6 +247,20 @@ class RegistrationFlowTest(TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'That email address is already in use.')
+
+    @patch('taskmaster.views.verify_recaptcha')
+    def test_register_step_one_accepts_new_email(self, mock_verify_recaptcha):
+        mock_verify_recaptcha.return_value = {'success': True}
+        response = self.client.post(
+            reverse('taskmaster:register'),
+            {
+                'email': 'new@example.com',
+                'g-recaptcha-response': 'token',
+            }
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('taskmaster:register_password'))
 
     def test_register_step_two_requires_step_one_first(self):
         response = self.client.get(reverse('taskmaster:register_password'))
@@ -246,7 +275,6 @@ class RegistrationFlowTest(TestCase):
         step_one = self.client.post(
             reverse('taskmaster:register'),
             {
-                'username': 'newuser',
                 'email': 'new@example.com',
                 'g-recaptcha-response': 'token',
             }
@@ -264,7 +292,36 @@ class RegistrationFlowTest(TestCase):
         self.assertEqual(step_two.status_code, 302)
         self.assertEqual(step_two.url, reverse('taskmaster:index'))
 
-        created_user = User.objects.get(username='newuser')
+        created_user = User.objects.get(email='new@example.com')
+        self.assertEqual(created_user.username, 'new@example.com')
         self.assertEqual(created_user.email, 'new@example.com')
         self.assertFalse(created_user.is_active)
         self.assertEqual(mock_activate_email.call_count, 1)
+
+
+class LoginFlowTest(TestCase):
+
+    @patch('taskmaster.views.verify_recaptcha')
+    def test_inactive_user_login_shows_activation_message(self, mock_verify_recaptcha):
+        mock_verify_recaptcha.return_value = {'success': True}
+        User.objects.create_user(
+            username='pending@example.com',
+            email='pending@example.com',
+            password='StrongPassword123!',
+            is_active=False,
+        )
+
+        response = self.client.post(
+            reverse('taskmaster:login'),
+            {
+                'username': 'pending@example.com',
+                'password': 'StrongPassword123!',
+                'g-recaptcha-response': 'token',
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(
+            response,
+            'Please go to you email inbox and click on received activation link to confirm and complete the registration. Note: Check your spam folder.'
+        )
