@@ -1,7 +1,12 @@
 from django.shortcuts import render, redirect
 from django.views import generic
 from .models import Task
-from .forms import NewUserForm, UsernameUpdateForm, EmailUpdateRequestForm
+from .forms import (
+    UsernameUpdateForm,
+    EmailUpdateRequestForm,
+    RegistrationIdentityForm,
+    RegistrationPasswordForm,
+)
 from django.contrib.auth import login, authenticate, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
@@ -10,6 +15,7 @@ from django.conf import settings
 from django.http import HttpResponse
 from django.contrib.auth.forms import PasswordResetForm
 from django.contrib.auth.models import User
+from django.db import IntegrityError
 from django.template.loader import render_to_string
 from django.db.models.query_utils import Q
 from django.urls import reverse
@@ -23,6 +29,7 @@ import requests
 RESEND_API_URL = "https://api.resend.com/emails"
 SETTINGS_CONFIRM_SALT = "taskmaster.settings.confirm"
 SETTINGS_CONFIRM_MAX_AGE = 60 * 60 * 24
+REGISTER_IDENTITY_SESSION_KEY = "register_identity"
 
 
 def resend_send_email(subject, to, text=None, html=None):
@@ -165,21 +172,59 @@ def register_request(request):
             result_json = verify_recaptcha(request.POST.get('g-recaptcha-response'), secret_key=secret_key)
         except requests.RequestException:
             messages.error(request, "reCAPTCHA verification could not be completed.")
-            form = NewUserForm()
+            form = RegistrationIdentityForm(request.POST)
             return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
-        if result_json.get('success'):
-            form = NewUserForm(request.POST)
-            if form.is_valid():
-                user = form.save()
-                user.is_active=False
-                user.save()
-                activateEmail(request, user, form.cleaned_data.get('email'))
-                return redirect('taskmaster:index')
-            messages.error(request, "Unsuccessful registration. Invalid information.")
-        else:
+
+        form = RegistrationIdentityForm(request.POST)
+        if not result_json.get('success'):
             messages.error(request, "If you identify as a robot, we have somewhere else for you to go")
-    form = NewUserForm()
-    return render (request=request, template_name="taskmaster/register.html", context={"register_form":form,'reCAPTCHA_site_key':settings.RECAPTCHA_SITE_KEY})
+            return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
+
+        if form.is_valid():
+            request.session[REGISTER_IDENTITY_SESSION_KEY] = {
+                'username': form.cleaned_data['username'],
+                'email': form.cleaned_data['email'],
+            }
+            return redirect('taskmaster:register_password')
+
+        messages.error(request, "Please correct the highlighted fields.")
+        return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
+
+    form = RegistrationIdentityForm()
+    return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
+
+
+def register_password_request(request):
+    identity = request.session.get(REGISTER_IDENTITY_SESSION_KEY)
+    if not identity:
+        messages.error(request, "Please complete step 1 (username and email) first.")
+        return redirect('taskmaster:register')
+
+    if request.method == "POST":
+        form = RegistrationPasswordForm(request.POST)
+        if form.is_valid():
+            try:
+                user = User.objects.create_user(
+                    username=identity['username'],
+                    email=identity['email'],
+                    password=form.cleaned_data['password1'],
+                )
+            except IntegrityError:
+                messages.error(request, "Username or email became unavailable. Please try again.")
+                request.session.pop(REGISTER_IDENTITY_SESSION_KEY, None)
+                return redirect('taskmaster:register')
+
+            user.is_active = False
+            user.save()
+            activateEmail(request, user, identity['email'])
+            request.session.pop(REGISTER_IDENTITY_SESSION_KEY, None)
+            return redirect('taskmaster:index')
+
+        messages.error(request, "Please correct the password errors below.")
+    else:
+        form = RegistrationPasswordForm()
+
+    return render(request=request, template_name="taskmaster/register_password.html", context={"password_form": form})
 
 def activate(request, uidb64, token):
     User = get_user_model()
