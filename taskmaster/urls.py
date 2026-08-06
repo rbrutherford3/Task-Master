@@ -15,6 +15,8 @@ urlpatterns = [
     path('activate/<uidb64>/<token>', views.activate, name='activate'),
     path('login', views.login_request, name='login'),
     path('logout', views.logout_request, name='logout'),
+    path('settings/', views.settings_view, name='settings'),
+    path('settings/confirm/<str:signed_payload>/', views.settings_confirm, name='settings_confirm'),
     path('password_reset', views.password_reset_request, name='password_reset'),
     path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(success_url=reverse_lazy('taskmaster:password_reset_complete'), template_name="taskmaster/password/password_reset_confirm.html"), name='password_reset_confirm'),
     path('reset/done/', views.password_reset_complete, name='password_reset_complete'),

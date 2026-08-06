@@ -1,0 +1,8 @@
+Hello {{ user.username }},
+
+We received a request to change your Task Master email address.
+
+Confirm the change by opening this link:
+{{ confirm_url }}
+
+If you did not request this change, you can ignore this email.

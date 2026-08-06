@@ -1,8 +1,9 @@
 from django.shortcuts import render, redirect
 from django.views import generic
 from .models import Task
-from .forms import NewUserForm
+from .forms import NewUserForm, UsernameUpdateForm, EmailUpdateRequestForm
 from django.contrib.auth import login, authenticate, logout, get_user_model
+from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.contrib.auth.forms import AuthenticationForm
 from django.conf import settings
@@ -11,13 +12,17 @@ from django.contrib.auth.forms import PasswordResetForm
 from django.contrib.auth.models import User
 from django.template.loader import render_to_string
 from django.db.models.query_utils import Q
+from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes, force_str
 from django.contrib.sites.shortcuts import get_current_site
+from django.core import signing
 import requests
 
 RESEND_API_URL = "https://api.resend.com/emails"
+SETTINGS_CONFIRM_SALT = "taskmaster.settings.confirm"
+SETTINGS_CONFIRM_MAX_AGE = 60 * 60 * 24
 
 
 def resend_send_email(subject, to, text=None, html=None):
@@ -43,6 +48,33 @@ def resend_send_email(subject, to, text=None, html=None):
     if not response.ok:
         raise RuntimeError(f"Resend API error {response.status_code}: {response.text}")
     return response.json()
+
+
+def send_password_reset_email(request, user):
+    subject = "Password Reset Requested"
+    email_template_name = "taskmaster/password/password_reset_email.txt"
+    context = {
+        'user': user.username,
+        'email': user.email,
+        'domain': get_current_site(request).domain,
+        'site_name': 'Spiff Industries',
+        'uid': urlsafe_base64_encode(force_bytes(user.pk)),
+        'token': default_token_generator.make_token(user),
+        'protocol': 'https' if request.is_secure() else 'http'
+    }
+    email = render_to_string(email_template_name, context)
+    resend_send_email(subject, user.email, text=email)
+
+
+def send_settings_confirmation_email(request, to_email, subject, payload, template_name):
+    signed_payload = signing.dumps(payload, salt=SETTINGS_CONFIRM_SALT)
+    confirm_url = (
+        f"{'https' if request.is_secure() else 'http'}://"
+        f"{get_current_site(request).domain}"
+        f"{reverse('taskmaster:settings_confirm', args=[signed_payload])}"
+    )
+    message = render_to_string(template_name, {'confirm_url': confirm_url, 'user': request.user})
+    resend_send_email(subject, to_email, text=message)
 
 from .recaptchav3 import verify_recaptcha
 
@@ -201,6 +233,141 @@ def logout_request(request):
 	messages.info(request, "You have successfully logged out.") 
 	return redirect('taskmaster:index')
 
+
+@login_required
+def settings_view(request):
+    if request.method == "POST":
+        action = request.POST.get('action')
+
+        if action == 'username':
+            old_username = User.objects.get(pk=request.user.pk).username
+            username_form = UsernameUpdateForm(request.POST, instance=request.user)
+            email_form = EmailUpdateRequestForm(initial={'email': request.user.email})
+            if username_form.is_valid():
+                updated_user = username_form.save()
+                if old_username != updated_user.username:
+                    Task.objects.filter(user=old_username).update(user=updated_user.username)
+                messages.success(request, "Username updated successfully.")
+            else:
+                messages.error(request, "Please correct the username errors below.")
+                return render(
+                    request,
+                    "taskmaster/settings.html",
+                    {
+                        'username_form': username_form,
+                        'email_form': email_form,
+                        'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+                    }
+                )
+
+        elif action == 'password':
+            try:
+                send_password_reset_email(request, request.user)
+                messages.success(request, "A password reset email has been sent to your inbox.")
+            except Exception:
+                messages.error(request, "Problem sending reset password email.")
+
+        elif action == 'email':
+            email_form = EmailUpdateRequestForm(request.POST)
+            username_form = UsernameUpdateForm(instance=request.user)
+            if email_form.is_valid():
+                new_email = email_form.cleaned_data['email']
+                payload = {
+                    'action': 'email_change',
+                    'uid': request.user.pk,
+                    'new_email': new_email,
+                }
+                try:
+                    send_settings_confirmation_email(
+                        request,
+                        new_email,
+                        "Confirm your Task Master email change",
+                        payload,
+                        "taskmaster/settings_confirm_email_change.txt",
+                    )
+                    messages.success(request, "Check your new email for a confirmation link.")
+                except Exception:
+                    messages.error(request, "Problem sending email confirmation.")
+            else:
+                messages.error(request, "Please provide a valid email address.")
+                return render(
+                    request,
+                    "taskmaster/settings.html",
+                    {
+                        'username_form': username_form,
+                        'email_form': email_form,
+                        'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+                    }
+                )
+
+        elif action == 'delete':
+            payload = {
+                'action': 'delete_account',
+                'uid': request.user.pk,
+            }
+            try:
+                send_settings_confirmation_email(
+                    request,
+                    request.user.email,
+                    "Confirm your Task Master account deletion",
+                    payload,
+                    "taskmaster/settings_confirm_delete.txt",
+                )
+                messages.success(request, "Check your email for the account deletion confirmation link.")
+            except Exception:
+                messages.error(request, "Problem sending account deletion confirmation email.")
+
+        return redirect('taskmaster:settings')
+
+    return render(
+        request,
+        "taskmaster/settings.html",
+        {
+            'username_form': UsernameUpdateForm(instance=request.user),
+            'email_form': EmailUpdateRequestForm(initial={'email': request.user.email}),
+            'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+        }
+    )
+
+
+def settings_confirm(request, signed_payload):
+    try:
+        data = signing.loads(signed_payload, salt=SETTINGS_CONFIRM_SALT, max_age=SETTINGS_CONFIRM_MAX_AGE)
+    except signing.BadSignature:
+        messages.error(request, "This confirmation link is invalid or has expired.")
+        return redirect('taskmaster:index')
+
+    action = data.get('action')
+    uid = data.get('uid')
+
+    try:
+        user = User.objects.get(pk=uid)
+    except User.DoesNotExist:
+        messages.error(request, "The requested account no longer exists.")
+        return redirect('taskmaster:index')
+
+    if action == 'email_change':
+        new_email = data.get('new_email')
+        if not new_email:
+            messages.error(request, "Invalid email change request.")
+            return redirect('taskmaster:index')
+        user.email = new_email
+        user.save()
+        messages.success(request, "Email address updated successfully.")
+        return redirect('taskmaster:settings')
+
+    if action == 'delete_account':
+        username = user.username
+        Task.objects.filter(user=username).delete()
+        if request.user.is_authenticated and request.user.pk == user.pk:
+            logout(request)
+        user.delete()
+        messages.success(request, "Your account has been deleted.")
+        return redirect('taskmaster:index')
+
+    messages.error(request, "Unknown account action.")
+    return redirect('taskmaster:index')
+
 def password_reset_request(request):
     if request.method == "POST":
         password_reset_form = PasswordResetForm(request.POST)
@@ -209,20 +376,8 @@ def password_reset_request(request):
             associated_users = User.objects.filter(Q(email=data))
             if associated_users.exists():
                 for user in associated_users:
-                    subject = "Password Reset Requested"
-                    email_template_name = "taskmaster/password/password_reset_email.txt"
-                    c = {
-                    'user': user.username,
-                    'email': user.email,
-                    'domain': get_current_site(request).domain,
-                    'site_name': 'Spiff Industries',
-                    'uid': urlsafe_base64_encode(force_bytes(user.pk)),
-                    'token': default_token_generator.make_token(user),
-                    'protocol': 'https' if request.is_secure() else 'http'
-                    }
-                    email = render_to_string(email_template_name, c)
                     try:
-                        resend_send_email(subject, user.email, text=email)
+                        send_password_reset_email(request, user)
                     except Exception:
                         return HttpResponse('Problem sending reset password email.')
                     messages.success(request, 'A message with reset password instructions has been sent to your inbox.')
