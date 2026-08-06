@@ -18,3 +18,16 @@ class NewUserForm(UserCreationForm):
 		if commit:
 			user.save()
 		return user
+
+
+class UsernameUpdateForm(forms.ModelForm):
+	class Meta:
+		model = User
+		fields = ("username",)
+		widgets = {
+			"username": forms.TextInput(attrs={"class": "task_input full_width", "required": True}),
+		}
+
+
+class EmailUpdateRequestForm(forms.Form):
+	email = forms.EmailField(required=True, widget=forms.EmailInput(attrs={"class": "task_input full_width"}))

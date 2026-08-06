@@ -1,0 +1,59 @@
+{% extends "taskmaster/header.html" %}
+
+{% block content %}
+<div id="body" class="overlay" style="background-color: white;">
+    <input type="hidden" id="g-recaptcha-response" value="">
+    <div class="detailcontainer" style="left: 50%; transform: translateX(-50%); top: 30px; width: 340px;">
+        <div class="detail low" style="display: block;">
+            <div class="label normal_text" style="margin-bottom: 8px;">Account Settings</div>
+
+            <form action="{% url 'taskmaster:settings' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="username">
+                <div class="small_text" style="margin-bottom: 4px;">Username</div>
+                {{ username_form.username }}
+                <input class="button label small_text" type="submit" value="Save Username">
+            </form>
+
+            <hr>
+
+            <form action="{% url 'taskmaster:settings' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="password">
+                <div class="small_text" style="margin-bottom: 4px;">Password</div>
+                <input class="button label small_text" type="submit" value="Send Password Reset Email">
+            </form>
+
+            <hr>
+
+            <form action="{% url 'taskmaster:settings' %}" method="POST">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="email">
+                <div class="small_text" style="margin-bottom: 4px;">Email Address</div>
+                {{ email_form.email }}
+                <input class="button label small_text" type="submit" value="Request Email Change">
+            </form>
+
+            <hr>
+
+            <form action="{% url 'taskmaster:settings' %}" method="POST" onsubmit="return confirm('Are you sure you want to request account deletion?');">
+                {% csrf_token %}
+                <input type="hidden" name="action" value="delete">
+                <input class="button label small_text" type="submit" value="Request Account Deletion">
+            </form>
+
+            <a class="buttonlink" href="{% url 'taskmaster:index' %}">
+                <div class="button navigation" style="margin-top: 10px;">
+                    <div class="label small_text">Back to Tasks</div>
+                </div>
+            </a>
+
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-dark{% endif %}" style="margin-top: 8px;">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+        </div>
+    </div>
+</div>
+{% endblock %}
