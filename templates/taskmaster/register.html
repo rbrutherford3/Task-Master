@@ -7,11 +7,12 @@
 <!--Register--> 
 <div class="container py-5">
 	<h1>Task Master</h1>
-    <h2>Register</h2>
+    <h2>Register - Step 1 of 2</h2>
+    <p>Choose your username and email address.</p>
 	<form method="POST">
 		{% csrf_token %}
 		{{ register_form|crispy }}                    
-		<button class="button label normal_text" style="float: left;" type="submit">Register</button>
+        <button class="button label normal_text" style="float: left;" type="submit">Continue</button>
         <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
         <input type="hidden" name="action" value="validate_captcha">
 	</form>

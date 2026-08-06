@@ -12,6 +12,7 @@ urlpatterns = [
     path('<int:pk>/toggle/', views.toggle, name='toggle'),
     path('purge/', views.purge, name='purge'),
     path('register/', views.register_request, name='register'),
+    path('register/password/', views.register_password_request, name='register_password'),
     path('activate/<uidb64>/<token>', views.activate, name='activate'),
     path('login', views.login_request, name='login'),
     path('logout', views.logout_request, name='logout'),
