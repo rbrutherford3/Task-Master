@@ -1,28 +1,31 @@
 {% extends "taskmaster/header.html" %}
 
-{% block content %} 
+{% block content %}
 
-{% load crispy_forms_tags %}         
+{% load crispy_forms_tags %}
 
-<!--Register--> 
-<div class="container py-5">
-	<h1>Task Master</h1>
-    <h2>Register - Step 1 of 2</h2>
-    <p>Choose your username and email address.</p>
-	<form method="POST">
-		{% csrf_token %}
-		{{ register_form|crispy }}                    
-        <button class="button label normal_text" style="float: left;" type="submit">Continue</button>
-        <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
-        <input type="hidden" name="action" value="validate_captcha">
-	</form>
-	<p>If you already have an account, <a href="{% url 'taskmaster:login' %}">login</a> instead.</p>
-    <div>
-        {% if messages %}
-        {% for message in messages %}
-        <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-dark{% endif %}">{{ message }}</div>
-        {% endfor %}
-        {% endif %}
+<div id="body" class="overlay" style="background-color: white;">
+    <div class="detailcontainer" style="left: 50%; transform: translateX(-50%); top: 30px; width: 340px;">
+        <div class="detail medium" style="display: block;">
+            <div class="label normal_text" style="margin-bottom: 8px;">Register - Step 1 of 2</div>
+            <p>Choose your username and email address.</p>
+
+            <form method="POST">
+                {% csrf_token %}
+                {{ register_form|crispy }}
+                <button class="button label normal_text" type="submit">Continue</button>
+                <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
+                <input type="hidden" name="action" value="validate_captcha">
+            </form>
+
+            <p>If you already have an account, <a href="{% url 'taskmaster:login' %}">login</a> instead.</p>
+
+            {% if messages %}
+            {% for message in messages %}
+            <div class="alert {% if message.tags == 'error' %}alert-danger{% else %}alert-dark{% endif %}">{{ message }}</div>
+            {% endfor %}
+            {% endif %}
+        </div>
     </div>
 </div>
 
