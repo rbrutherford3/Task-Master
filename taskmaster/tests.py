@@ -2,6 +2,7 @@ import datetime
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
+from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
 from django.test import TestCase
 from django.urls import reverse
@@ -301,6 +302,16 @@ class RegistrationFlowTest(TestCase):
 
 class LoginFlowTest(TestCase):
 
+    def test_login_get_hides_resend_prompt_without_current_attempt(self):
+        session = self.client.session
+        session['login_pending_activation_uid'] = 999
+        session.save()
+
+        response = self.client.get(reverse('taskmaster:login'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertNotContains(response, 'Would you like to be resent the confirmation email?')
+
     @patch('taskmaster.views.verify_recaptcha')
     def test_inactive_user_login_shows_activation_message(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
@@ -323,5 +334,43 @@ class LoginFlowTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertContains(
             response,
-            'Please go to you email inbox and click on received activation link to confirm and complete the registration. Note: Check your spam folder.'
+            'Please go to your email inbox and click on the received activation link to confirm and complete the registration. Note: Check your spam folder.'
         )
+        self.assertContains(response, 'Would you like to be resent the confirmation email?')
+
+    @patch('taskmaster.views.activateEmail')
+    @patch('taskmaster.views.verify_recaptcha')
+    def test_resend_activation_email_rotates_token(self, mock_verify_recaptcha, mock_activate_email):
+        mock_verify_recaptcha.return_value = {'success': True}
+        user = User.objects.create_user(
+            username='pending2@example.com',
+            email='pending2@example.com',
+            password='StrongPassword123!',
+            is_active=False,
+        )
+        old_token = default_token_generator.make_token(user)
+
+        login_attempt = self.client.post(
+            reverse('taskmaster:login'),
+            {
+                'username': 'pending2@example.com',
+                'password': 'StrongPassword123!',
+                'g-recaptcha-response': 'token',
+            }
+        )
+        self.assertEqual(login_attempt.status_code, 200)
+        self.assertContains(login_attempt, 'Would you like to be resent the confirmation email?')
+
+        resend_response = self.client.post(
+            reverse('taskmaster:login'),
+            {
+                'action': 'resend_activation',
+            }
+        )
+
+        self.assertEqual(resend_response.status_code, 200)
+        self.assertContains(resend_response, 'A new confirmation email has been sent.')
+        self.assertEqual(mock_activate_email.call_count, 1)
+
+        user.refresh_from_db()
+        self.assertFalse(default_token_generator.check_token(user, old_token))

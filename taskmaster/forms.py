@@ -26,7 +26,7 @@ class EmailUpdateRequestForm(forms.Form):
 class RegistrationIdentityForm(forms.Form):
 	email = forms.EmailField(
 		required=True,
-		widget=forms.EmailInput(attrs={"class": "task_input full_width"}),
+		widget=forms.EmailInput(attrs={"class": "task_input full_width", "autofocus": True}),
 	)
 
 	def clean_email(self):
@@ -41,7 +41,7 @@ class RegistrationPasswordForm(forms.Form):
 		label="Enter Password",
 		required=True,
 		strip=False,
-		widget=forms.PasswordInput(attrs={"class": "task_input full_width"}),
+		widget=forms.PasswordInput(attrs={"class": "task_input full_width", "autofocus": True}),
 	)
 	password2 = forms.CharField(
 		label="Confirm Password",
