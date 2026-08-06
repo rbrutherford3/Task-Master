@@ -9,16 +9,6 @@
 
             <form action="{% url 'taskmaster:settings' %}" method="POST">
                 {% csrf_token %}
-                <input type="hidden" name="action" value="username">
-                <div class="small_text" style="margin-bottom: 4px;">Username</div>
-                {{ username_form.username }}
-                <input class="button label normal_text" type="submit" value="Save Username">
-            </form>
-
-            <hr>
-
-            <form action="{% url 'taskmaster:settings' %}" method="POST">
-                {% csrf_token %}
                 <input type="hidden" name="action" value="password">
                 <div class="small_text" style="margin-bottom: 4px;">Password</div>
                 <input class="button label normal_text" type="submit" value="Send Password Reset Email">
@@ -39,7 +29,7 @@
             <form action="{% url 'taskmaster:settings' %}" method="POST" onsubmit="return confirm('Are you sure you want to request account deletion?');">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete">
-                <input class="button label normal_text" type="submit" value="Request Account Deletion">
+                <input class="button label normal_text" type="submit" value="Delete Account">
             </form>
 
             <a class="buttonlink" href="{% url 'taskmaster:index' %}">

@@ -2,7 +2,7 @@ from django.shortcuts import render, redirect
 from django.views import generic
 from .models import Task
 from .forms import (
-    UsernameUpdateForm,
+    EmailAuthenticationForm,
     EmailUpdateRequestForm,
     RegistrationIdentityForm,
     RegistrationPasswordForm,
@@ -10,7 +10,6 @@ from .forms import (
 from django.contrib.auth import login, authenticate, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
-from django.contrib.auth.forms import AuthenticationForm
 from django.conf import settings
 from django.http import HttpResponse
 from django.contrib.auth.forms import PasswordResetForm
@@ -61,7 +60,7 @@ def send_password_reset_email(request, user):
     subject = "Password Reset Requested"
     email_template_name = "taskmaster/password/password_reset_email.txt"
     context = {
-        'user': user.username,
+        'user': user.email,
         'email': user.email,
         'domain': get_current_site(request).domain,
         'site_name': 'Spiff Industries',
@@ -92,10 +91,10 @@ class IndexView(generic.ListView):
     def get_context_data(self, *args, **kwargs):
         if self.request.user.is_authenticated:
             context = super(IndexView, self).get_context_data(*args, **kwargs)
-            context['low_urgency'] = Task.objects.filter(user=self.request.user.username).filter(urgency=0).order_by('-importance')
-            context['med_urgency'] = Task.objects.filter(user=self.request.user.username).filter(urgency=1).order_by('-importance')
-            context['high_urgency'] = Task.objects.filter(user=self.request.user.username).filter(urgency=2).order_by('-importance')
-            context['all_tasks'] = Task.objects.filter(user=self.request.user.username)
+            context['low_urgency'] = Task.objects.filter(user=self.request.user.email).filter(urgency=0).order_by('-importance')
+            context['med_urgency'] = Task.objects.filter(user=self.request.user.email).filter(urgency=1).order_by('-importance')
+            context['high_urgency'] = Task.objects.filter(user=self.request.user.email).filter(urgency=2).order_by('-importance')
+            context['all_tasks'] = Task.objects.filter(user=self.request.user.email)
         else:
             context = None
         return context
@@ -127,7 +126,7 @@ def save_task(self, *args, **kwargs):
         task.urgency = self.POST.get('urgency')
         if (len(self.POST.get('long_desc')) > 0):
             task.long_desc = self.POST.get('long_desc')
-        task.user = self.user.username
+        task.user = self.user.email
         task.save()
     # Otherwise the delete button was pressed...
     else:
@@ -143,7 +142,7 @@ def toggle(request, pk):
 
 # Delete all completed tasks (at user's discretion)
 def purge(request):
-    tasks = Task.objects.filter(user=request.user).filter(completed=True)
+    tasks = Task.objects.filter(user=request.user.email).filter(completed=True)
     for task in tasks:
         task.delete()
     return redirect('taskmaster:index')
@@ -151,7 +150,7 @@ def purge(request):
 def activateEmail(request, user, to_email):
     mail_subject = 'Activate your user account.'
     message = render_to_string('taskmaster/activate_account_email.txt', {
-        'user': user.username,
+        'user': user.email,
         'domain': get_current_site(request).domain,
         'uid': urlsafe_base64_encode(force_bytes(user.pk)),
         'token': default_token_generator.make_token(user),
@@ -182,7 +181,6 @@ def register_request(request):
 
         if form.is_valid():
             request.session[REGISTER_IDENTITY_SESSION_KEY] = {
-                'username': form.cleaned_data['username'],
                 'email': form.cleaned_data['email'],
             }
             return redirect('taskmaster:register_password')
@@ -197,7 +195,7 @@ def register_request(request):
 def register_password_request(request):
     identity = request.session.get(REGISTER_IDENTITY_SESSION_KEY)
     if not identity:
-        messages.error(request, "Please complete step 1 (username and email) first.")
+        messages.error(request, "Please complete step 1 (email address) first.")
         return redirect('taskmaster:register')
 
     if request.method == "POST":
@@ -205,12 +203,12 @@ def register_password_request(request):
         if form.is_valid():
             try:
                 user = User.objects.create_user(
-                    username=identity['username'],
+                    username=identity['email'],
                     email=identity['email'],
                     password=form.cleaned_data['password1'],
                 )
             except IntegrityError:
-                messages.error(request, "Username or email became unavailable. Please try again.")
+                messages.error(request, "Email became unavailable. Please try again.")
                 request.session.pop(REGISTER_IDENTITY_SESSION_KEY, None)
                 return redirect('taskmaster:register')
 
@@ -245,31 +243,43 @@ def activate(request, uidb64, token):
 
 # Log into a user account
 def login_request(request):
+    activation_message = "Please go to you email inbox and click on received activation link to confirm and complete the registration. Note: Check your spam folder."
+
     if request.method == "POST":
         secret_key = settings.RECAPTCHA_SECRET_KEY
         try:
             result_json = verify_recaptcha(request.POST.get('g-recaptcha-response'), secret_key=secret_key)
         except requests.RequestException:
             messages.error(request, "reCAPTCHA verification could not be completed.")
-            form = AuthenticationForm()
+            form = EmailAuthenticationForm()
             return render(request=request, template_name='taskmaster/login.html', context={"login_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
         if result_json.get('success'):
-            form = AuthenticationForm(request, data=request.POST)
+            form = EmailAuthenticationForm(request, data=request.POST)
             if form.is_valid():
-                username = form.cleaned_data.get('username')
+                email = form.cleaned_data.get('username')
                 password = form.cleaned_data.get('password')
-                user = authenticate(username=username, password=password)
+                user = authenticate(username=email, password=password)
                 if user is not None:
                     login(request, user)
-                    messages.info(request, f"You are now logged in as {username}.")
+                    messages.info(request, f"You are now logged in as {email}.")
                     return redirect('taskmaster:index')
                 else:
-                    messages.error(request,"Invalid username or password.")
+                    pending_user = User.objects.filter(email__iexact=email, is_active=False).first()
+                    if pending_user and pending_user.check_password(password):
+                        messages.error(request, activation_message)
+                    else:
+                        messages.error(request,"Invalid email or password.")
             else:
-                messages.error(request,"Invalid username or password.")
+                email = request.POST.get('username', '').strip()
+                password = request.POST.get('password', '')
+                pending_user = User.objects.filter(email__iexact=email, is_active=False).first()
+                if pending_user and password and pending_user.check_password(password):
+                    messages.error(request, activation_message)
+                else:
+                    messages.error(request,"Invalid email or password.")
         else:
             messages.error(request,"Would you real homo-sapien please stand up?")
-    form = AuthenticationForm()
+    form = EmailAuthenticationForm()
     return render(request=request, template_name='taskmaster/login.html', context={"login_form":form,'reCAPTCHA_site_key':settings.RECAPTCHA_SITE_KEY})
 
 # Log out of a user account
@@ -284,28 +294,7 @@ def settings_view(request):
     if request.method == "POST":
         action = request.POST.get('action')
 
-        if action == 'username':
-            old_username = User.objects.get(pk=request.user.pk).username
-            username_form = UsernameUpdateForm(request.POST, instance=request.user)
-            email_form = EmailUpdateRequestForm(initial={'email': request.user.email})
-            if username_form.is_valid():
-                updated_user = username_form.save()
-                if old_username != updated_user.username:
-                    Task.objects.filter(user=old_username).update(user=updated_user.username)
-                messages.success(request, "Username updated successfully.")
-            else:
-                messages.error(request, "Please correct the username errors below.")
-                return render(
-                    request,
-                    "taskmaster/settings.html",
-                    {
-                        'username_form': username_form,
-                        'email_form': email_form,
-                        'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
-                    }
-                )
-
-        elif action == 'password':
+        if action == 'password':
             try:
                 send_password_reset_email(request, request.user)
                 messages.success(request, "A password reset email has been sent to your inbox.")
@@ -314,7 +303,6 @@ def settings_view(request):
 
         elif action == 'email':
             email_form = EmailUpdateRequestForm(request.POST)
-            username_form = UsernameUpdateForm(instance=request.user)
             if email_form.is_valid():
                 new_email = email_form.cleaned_data['email']
                 payload = {
@@ -334,12 +322,15 @@ def settings_view(request):
                 except Exception:
                     messages.error(request, "Problem sending email confirmation.")
             else:
-                messages.error(request, "Please provide a valid email address.")
+                email_errors = email_form.errors.get('email')
+                if email_errors:
+                    messages.error(request, email_errors[0])
+                else:
+                    messages.error(request, "Please provide a valid email address.")
                 return render(
                     request,
                     "taskmaster/settings.html",
                     {
-                        'username_form': username_form,
                         'email_form': email_form,
                         'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
                     }
@@ -368,7 +359,6 @@ def settings_view(request):
         request,
         "taskmaster/settings.html",
         {
-            'username_form': UsernameUpdateForm(instance=request.user),
             'email_form': EmailUpdateRequestForm(initial={'email': request.user.email}),
             'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
         }
@@ -396,8 +386,14 @@ def settings_confirm(request, signed_payload):
         if not new_email:
             messages.error(request, "Invalid email change request.")
             return redirect('taskmaster:index')
+        if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
+            messages.error(request, "That email address is already in use.")
+            return redirect('taskmaster:settings')
+        old_identity = user.username
         user.email = new_email
+        user.username = new_email
         user.save()
+        Task.objects.filter(user=old_identity).update(user=new_email)
         messages.success(request, "Email address updated successfully.")
         return redirect('taskmaster:settings')
 
