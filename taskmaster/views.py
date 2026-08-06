@@ -21,6 +21,7 @@ from django.urls import reverse
 from django.utils.http import urlsafe_base64_encode, urlsafe_base64_decode
 from django.contrib.auth.tokens import default_token_generator
 from django.utils.encoding import force_bytes, force_str
+from django.utils import timezone
 from django.contrib.sites.shortcuts import get_current_site
 from django.core import signing
 import requests
@@ -29,6 +30,7 @@ RESEND_API_URL = "https://api.resend.com/emails"
 SETTINGS_CONFIRM_SALT = "taskmaster.settings.confirm"
 SETTINGS_CONFIRM_MAX_AGE = 60 * 60 * 24
 REGISTER_IDENTITY_SESSION_KEY = "register_identity"
+LOGIN_PENDING_ACTIVATION_SESSION_KEY = "login_pending_activation_uid"
 
 
 def resend_send_email(subject, to, text=None, html=None):
@@ -158,8 +160,8 @@ def activateEmail(request, user, to_email):
     })
     try:
         resend_send_email(mail_subject, to_email, text=message)
-        messages.success(request, "Please go to you email inbox and click on \
-            received activation link to confirm and complete the registration. Note: Check your spam folder.")
+        messages.success(request, "Please go to your email inbox and click on \
+            the received activation link to confirm and complete the registration. Note: Check your spam folder.")
     except Exception:
         messages.error(request, "Problem sending confirmation email, check if you typed it correctly.")
 
@@ -243,7 +245,37 @@ def activate(request, uidb64, token):
 
 # Log into a user account
 def login_request(request):
-    activation_message = "Please go to you email inbox and click on received activation link to confirm and complete the registration. Note: Check your spam folder."
+    activation_message = "Please go to your email inbox and click on the received activation link to confirm and complete the registration. Note: Check your spam folder."
+    resend_prompt = "Would you like to be resent the confirmation email?"
+
+    if request.method == "GET":
+        request.session.pop(LOGIN_PENDING_ACTIVATION_SESSION_KEY, None)
+
+    if request.method == "POST" and request.POST.get('action') == 'resend_activation':
+        pending_uid = request.session.get(LOGIN_PENDING_ACTIVATION_SESSION_KEY)
+        if pending_uid:
+            pending_user = User.objects.filter(pk=pending_uid, is_active=False).first()
+            if pending_user:
+                # Rotate the token seed so previously-issued activation links become invalid.
+                pending_user.last_login = timezone.now()
+                pending_user.save(update_fields=["last_login"])
+                activateEmail(request, pending_user, pending_user.email)
+                messages.success(request, "A new confirmation email has been sent.")
+            else:
+                messages.error(request, "No inactive account found for resending confirmation.")
+        else:
+            messages.error(request, "Please attempt login first so we can verify your account.")
+
+        return render(
+            request=request,
+            template_name='taskmaster/login.html',
+            context={
+                "login_form": EmailAuthenticationForm(),
+                'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+                'show_resend_activation': False,
+                'resend_prompt': resend_prompt,
+            }
+        )
 
     if request.method == "POST":
         secret_key = settings.RECAPTCHA_SECRET_KEY
@@ -260,27 +292,41 @@ def login_request(request):
                 password = form.cleaned_data.get('password')
                 user = authenticate(username=email, password=password)
                 if user is not None:
+                    request.session.pop(LOGIN_PENDING_ACTIVATION_SESSION_KEY, None)
                     login(request, user)
                     messages.info(request, f"You are now logged in as {email}.")
                     return redirect('taskmaster:index')
                 else:
                     pending_user = User.objects.filter(email__iexact=email, is_active=False).first()
                     if pending_user and pending_user.check_password(password):
+                        request.session[LOGIN_PENDING_ACTIVATION_SESSION_KEY] = pending_user.pk
                         messages.error(request, activation_message)
                     else:
+                        request.session.pop(LOGIN_PENDING_ACTIVATION_SESSION_KEY, None)
                         messages.error(request,"Invalid email or password.")
             else:
                 email = request.POST.get('username', '').strip()
                 password = request.POST.get('password', '')
                 pending_user = User.objects.filter(email__iexact=email, is_active=False).first()
                 if pending_user and password and pending_user.check_password(password):
+                    request.session[LOGIN_PENDING_ACTIVATION_SESSION_KEY] = pending_user.pk
                     messages.error(request, activation_message)
                 else:
+                    request.session.pop(LOGIN_PENDING_ACTIVATION_SESSION_KEY, None)
                     messages.error(request,"Invalid email or password.")
         else:
             messages.error(request,"Would you real homo-sapien please stand up?")
     form = EmailAuthenticationForm()
-    return render(request=request, template_name='taskmaster/login.html', context={"login_form":form,'reCAPTCHA_site_key':settings.RECAPTCHA_SITE_KEY})
+    return render(
+        request=request,
+        template_name='taskmaster/login.html',
+        context={
+            "login_form": form,
+            'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+            'show_resend_activation': bool(request.session.get(LOGIN_PENDING_ACTIVATION_SESSION_KEY)),
+            'resend_prompt': resend_prompt,
+        }
+    )
 
 # Log out of a user account
 def logout_request(request):
