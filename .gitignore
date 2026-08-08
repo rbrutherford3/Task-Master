@@ -4,3 +4,4 @@ reset_tasks
 .venv/
 local_settings.py
 db.sqlite3
+environment_vars
