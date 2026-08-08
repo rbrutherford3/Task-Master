@@ -84,6 +84,29 @@ def send_settings_confirmation_email(request, to_email, subject, payload, templa
     message = render_to_string(template_name, {'confirm_url': confirm_url, 'user': request.user})
     resend_send_email(subject, to_email, text=message)
 
+
+def send_existing_account_notice_email(request, to_email):
+    site = get_current_site(request)
+    login_url = (
+        f"{'https' if request.is_secure() else 'http'}://"
+        f"{site.domain}"
+        f"{reverse('taskmaster:login')}"
+    )
+    password_reset_url = (
+        f"{'https' if request.is_secure() else 'http'}://"
+        f"{site.domain}"
+        f"{reverse('taskmaster:password_reset')}"
+    )
+    message = render_to_string(
+        'taskmaster/existing_account_notice_email.txt',
+        {
+            'user': to_email,
+            'login_url': login_url,
+            'password_reset_url': password_reset_url,
+        },
+    )
+    resend_send_email("Security notice: account activity detected", to_email, text=message)
+
 from .recaptchav3 import verify_recaptcha
 
 # Show all tasks and group by urgency (hence the three queries)
@@ -149,7 +172,7 @@ def purge(request):
         task.delete()
     return redirect('taskmaster:index')
 
-def activateEmail(request, user, to_email):
+def activateEmail(request, user, to_email, success_message=None):
     mail_subject = 'Activate your user account.'
     message = render_to_string('taskmaster/activate_account_email.txt', {
         'user': user.email,
@@ -160,8 +183,10 @@ def activateEmail(request, user, to_email):
     })
     try:
         resend_send_email(mail_subject, to_email, text=message)
-        messages.success(request, "Please go to your email inbox and click on \
-            the received activation link to confirm and complete the registration. Note: Check your spam folder.")
+        messages.success(
+            request,
+            success_message or "Please go to your email inbox and click on the received activation link to confirm and complete the registration. Note: Check your spam folder.",
+        )
     except Exception:
         messages.error(request, "Problem sending confirmation email, check if you typed it correctly.")
 
@@ -203,6 +228,17 @@ def register_password_request(request):
     if request.method == "POST":
         form = RegistrationPasswordForm(request.POST)
         if form.is_valid():
+            existing_user = User.objects.filter(email__iexact=identity['email']).first()
+            if existing_user is not None:
+                try:
+                    send_existing_account_notice_email(request, identity['email'])
+                except Exception:
+                    messages.error(request, "Problem sending account notice email.")
+                else:
+                    messages.success(request, "Please go to your email inbox and click on the received activation link to confirm and complete the registration. Note: Check your spam folder.")
+                request.session.pop(REGISTER_IDENTITY_SESSION_KEY, None)
+                return redirect('taskmaster:index')
+
             try:
                 user = User.objects.create_user(
                     username=identity['email'],
@@ -216,7 +252,7 @@ def register_password_request(request):
 
             user.is_active = False
             user.save()
-            activateEmail(request, user, identity['email'])
+            activateEmail(request, user, identity['email'], "Please go to your email inbox and click on the received activation link to confirm and complete the registration. Note: Check your spam folder.")
             request.session.pop(REGISTER_IDENTITY_SESSION_KEY, None)
             return redirect('taskmaster:index')
 
@@ -351,22 +387,31 @@ def settings_view(request):
             email_form = EmailUpdateRequestForm(request.POST)
             if email_form.is_valid():
                 new_email = email_form.cleaned_data['email']
-                payload = {
-                    'action': 'email_change',
-                    'uid': request.user.pk,
-                    'new_email': new_email,
-                }
-                try:
-                    send_settings_confirmation_email(
-                        request,
-                        new_email,
-                        "Confirm your Task Master email change",
-                        payload,
-                        "taskmaster/settings_confirm_email_change.txt",
-                    )
-                    messages.success(request, "Check your new email for a confirmation link.")
-                except Exception:
-                    messages.error(request, "Problem sending email confirmation.")
+                existing_user = User.objects.filter(email__iexact=new_email).exclude(pk=request.user.pk).first()
+                if existing_user is not None:
+                    try:
+                        send_existing_account_notice_email(request, new_email)
+                    except Exception:
+                        messages.error(request, "Problem sending account notice email.")
+                    else:
+                        messages.success(request, "Please go to your email inbox and click on the received activation link to confirm and complete the registration. Note: Check your spam folder.")
+                else:
+                    payload = {
+                        'action': 'email_change',
+                        'uid': request.user.pk,
+                        'new_email': new_email,
+                    }
+                    try:
+                        send_settings_confirmation_email(
+                            request,
+                            new_email,
+                            "Confirm your Task Master email change",
+                            payload,
+                            "taskmaster/settings_confirm_email_change.txt",
+                        )
+                        messages.success(request, "Please go to your email inbox and click on the received activation link to confirm and complete the registration. Note: Check your spam folder.")
+                    except Exception:
+                        messages.error(request, "Problem sending email confirmation.")
             else:
                 email_errors = email_form.errors.get('email')
                 if email_errors:
@@ -433,7 +478,12 @@ def settings_confirm(request, signed_payload):
             messages.error(request, "Invalid email change request.")
             return redirect('taskmaster:index')
         if User.objects.filter(email__iexact=new_email).exclude(pk=user.pk).exists():
-            messages.error(request, "That email address is already in use.")
+            try:
+                send_existing_account_notice_email(request, new_email)
+            except Exception:
+                messages.error(request, "Problem sending account notice email.")
+            else:
+                messages.success(request, "Please go to your email inbox and click on the received activation link to confirm and complete the registration. Note: Check your spam folder.")
             return redirect('taskmaster:settings')
         old_identity = user.username
         user.email = new_email

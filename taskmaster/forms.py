@@ -18,8 +18,6 @@ class EmailUpdateRequestForm(forms.Form):
 
 	def clean_email(self):
 		email = self.cleaned_data["email"]
-		if User.objects.filter(email__iexact=email).exists():
-			raise forms.ValidationError("That email address is already in use.")
 		return email
 
 
@@ -31,8 +29,6 @@ class RegistrationIdentityForm(forms.Form):
 
 	def clean_email(self):
 		email = self.cleaned_data["email"]
-		if User.objects.filter(email__iexact=email).exists():
-			raise forms.ValidationError("That email address is already in use.")
 		return email
 
 
