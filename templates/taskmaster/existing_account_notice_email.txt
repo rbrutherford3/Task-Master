@@ -1,0 +1,13 @@
+{% autoescape off %}
+Hello,
+
+We noticed an attempt to register or update an email address for an account that already exists in Task Master.
+
+If this was you, please sign in here:
+{{ login_url }}
+
+If you need to reset your password, use:
+{{ password_reset_url }}
+
+If you did not make this request, you can safely ignore this message.
+{% endautoescape %}

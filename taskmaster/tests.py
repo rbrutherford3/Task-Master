@@ -176,7 +176,9 @@ class SettingsFlowTest(TestCase):
         self.user.refresh_from_db()
         self.assertEqual(self.user.email, 'new@example.com')
 
-    def test_email_change_duplicate_shows_in_use_message(self):
+    @patch('taskmaster.views.send_settings_confirmation_email')
+    @patch('taskmaster.views.send_existing_account_notice_email')
+    def test_email_change_duplicate_sends_notice_email_and_generic_message(self, mock_send_notice_email, mock_send_settings_confirmation_email):
         User.objects.create_user(
             username='taken@example.com',
             email='taken@example.com',
@@ -188,11 +190,14 @@ class SettingsFlowTest(TestCase):
             {
                 'action': 'email',
                 'email': 'taken@example.com',
-            }
+            },
+            follow=True,
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'That email address is already in use.')
+        self.assertContains(response, 'Please go to your email inbox and click on the received activation link to confirm and complete the registration. Note: Check your spam folder.')
+        mock_send_settings_confirmation_email.assert_not_called()
+        mock_send_notice_email.assert_called_once()
 
     @patch('taskmaster.views.send_settings_confirmation_email')
     def test_account_delete_happens_only_after_confirmation(self, mock_send_settings_confirmation_email):
@@ -234,7 +239,7 @@ class SettingsFlowTest(TestCase):
 class RegistrationFlowTest(TestCase):
 
     @patch('taskmaster.views.verify_recaptcha')
-    def test_register_step_one_email_taken_message(self, mock_verify_recaptcha):
+    def test_register_step_one_accepts_existing_email(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
         User.objects.create_user(username='taken@example.com', email='taken@example.com', password='x-12345-Abc')
 
@@ -246,8 +251,8 @@ class RegistrationFlowTest(TestCase):
             }
         )
 
-        self.assertEqual(response.status_code, 200)
-        self.assertContains(response, 'That email address is already in use.')
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('taskmaster:register_password'))
 
     @patch('taskmaster.views.verify_recaptcha')
     def test_register_step_one_accepts_new_email(self, mock_verify_recaptcha):
@@ -298,6 +303,33 @@ class RegistrationFlowTest(TestCase):
         self.assertEqual(created_user.email, 'new@example.com')
         self.assertFalse(created_user.is_active)
         self.assertEqual(mock_activate_email.call_count, 1)
+
+    @patch('taskmaster.views.send_existing_account_notice_email')
+    @patch('taskmaster.views.verify_recaptcha')
+    def test_register_two_step_notifies_existing_email_without_creating_user(self, mock_verify_recaptcha, mock_send_notice_email):
+        mock_verify_recaptcha.return_value = {'success': True}
+        existing_user = User.objects.create_user(
+            username='taken@example.com',
+            email='taken@example.com',
+            password='x-12345-Abc',
+        )
+
+        session = self.client.session
+        session['register_identity'] = {'email': existing_user.email}
+        session.save()
+
+        response = self.client.post(
+            reverse('taskmaster:register_password'),
+            {
+                'password1': 'StrongPassword123!',
+                'password2': 'StrongPassword123!',
+            }
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('taskmaster:index'))
+        self.assertEqual(User.objects.filter(email='taken@example.com').count(), 1)
+        mock_send_notice_email.assert_called_once()
 
 
 class LoginFlowTest(TestCase):
