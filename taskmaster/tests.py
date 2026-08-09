@@ -2,12 +2,12 @@ import datetime
 from unittest.mock import patch
 
 from django.contrib.auth.models import User
-from django.contrib.auth.tokens import default_token_generator
 from django.core import signing
 from django.test import TestCase
 from django.urls import reverse
+from django.utils import timezone
 
-from .models import Task
+from .models import LoginLockout, Task
 from .views import SETTINGS_CONFIRM_SALT
 
 # Assumes that today is not at the very beginning or end of the year
@@ -345,7 +345,7 @@ class LoginFlowTest(TestCase):
         self.assertNotContains(response, 'Would you like to be resent the confirmation email?')
 
     @patch('taskmaster.views.verify_recaptcha')
-    def test_inactive_user_login_shows_activation_message(self, mock_verify_recaptcha):
+    def test_inactive_user_login_returns_generic_error(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
         User.objects.create_user(
             username='pending@example.com',
@@ -364,45 +364,148 @@ class LoginFlowTest(TestCase):
         )
 
         self.assertEqual(response.status_code, 200)
-        self.assertContains(
-            response,
-            'Please go to your email inbox and click on the received activation link to confirm and complete the registration. Note: Check your spam folder.'
-        )
-        self.assertContains(response, 'Would you like to be resent the confirmation email?')
+        self.assertContains(response, 'Invalid email or password.')
+        self.assertNotContains(response, 'Would you like to be resent the confirmation email?')
 
-    @patch('taskmaster.views.activateEmail')
     @patch('taskmaster.views.verify_recaptcha')
-    def test_resend_activation_email_rotates_token(self, mock_verify_recaptcha, mock_activate_email):
+    def test_invalid_login_increments_failed_attempts(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
-        user = User.objects.create_user(
-            username='pending2@example.com',
-            email='pending2@example.com',
+        User.objects.create_user(
+            username='user@example.com',
+            email='user@example.com',
             password='StrongPassword123!',
-            is_active=False,
+            is_active=True,
         )
-        old_token = default_token_generator.make_token(user)
 
-        login_attempt = self.client.post(
+        response = self.client.post(
             reverse('taskmaster:login'),
             {
-                'username': 'pending2@example.com',
+                'username': 'user@example.com',
+                'password': 'wrong-password',
+                'g-recaptcha-response': 'token',
+            }
+        )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Invalid email or password.')
+        state = LoginLockout.objects.get(email='user@example.com')
+        self.assertEqual(state.failed_attempts, 1)
+        self.assertIsNone(state.lockout_until)
+
+    @patch('taskmaster.views.verify_recaptcha')
+    def test_fifth_invalid_login_sets_fifteen_minute_lockout(self, mock_verify_recaptcha):
+        mock_verify_recaptcha.return_value = {'success': True}
+        User.objects.create_user(
+            username='lockme@example.com',
+            email='lockme@example.com',
+            password='StrongPassword123!',
+            is_active=True,
+        )
+
+        for _ in range(5):
+            response = self.client.post(
+                reverse('taskmaster:login'),
+                {
+                    'username': 'lockme@example.com',
+                    'password': 'wrong-password',
+                    'g-recaptcha-response': 'token',
+                }
+            )
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Invalid email or password.')
+        state = LoginLockout.objects.get(email='lockme@example.com')
+        self.assertEqual(state.failed_attempts, 5)
+        self.assertIsNotNone(state.lockout_until)
+        self.assertGreater(state.lockout_until, timezone.now())
+        self.assertLessEqual(state.lockout_until, timezone.now() + datetime.timedelta(minutes=15, seconds=5))
+
+    @patch('taskmaster.views.verify_recaptcha')
+    def test_locked_out_user_is_rejected_with_generic_error(self, mock_verify_recaptcha):
+        mock_verify_recaptcha.return_value = {'success': True}
+        User.objects.create_user(
+            username='locked@example.com',
+            email='locked@example.com',
+            password='StrongPassword123!',
+            is_active=True,
+        )
+        LoginLockout.objects.create(
+            email='locked@example.com',
+            failed_attempts=5,
+            lockout_until=timezone.now() + datetime.timedelta(minutes=15),
+        )
+
+        response = self.client.post(
+            reverse('taskmaster:login'),
+            {
+                'username': 'locked@example.com',
                 'password': 'StrongPassword123!',
                 'g-recaptcha-response': 'token',
             }
         )
-        self.assertEqual(login_attempt.status_code, 200)
-        self.assertContains(login_attempt, 'Would you like to be resent the confirmation email?')
 
-        resend_response = self.client.post(
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, 'Invalid email or password.')
+
+    @patch('taskmaster.views.verify_recaptcha')
+    def test_successful_login_clears_lockout_state(self, mock_verify_recaptcha):
+        mock_verify_recaptcha.return_value = {'success': True}
+        user = User.objects.create_user(
+            username='clear@example.com',
+            email='clear@example.com',
+            password='StrongPassword123!',
+            is_active=True,
+        )
+        LoginLockout.objects.create(
+            email='clear@example.com',
+            failed_attempts=4,
+            lockout_until=timezone.now() - datetime.timedelta(minutes=1),
+        )
+
+        response = self.client.post(
             reverse('taskmaster:login'),
             {
-                'action': 'resend_activation',
+                'username': 'clear@example.com',
+                'password': 'StrongPassword123!',
+                'g-recaptcha-response': 'token',
             }
         )
 
-        self.assertEqual(resend_response.status_code, 200)
-        self.assertContains(resend_response, 'A new confirmation email has been sent.')
-        self.assertEqual(mock_activate_email.call_count, 1)
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('taskmaster:index'))
+        self.assertEqual(int(self.client.session['_auth_user_id']), user.pk)
 
-        user.refresh_from_db()
-        self.assertFalse(default_token_generator.check_token(user, old_token))
+        state = LoginLockout.objects.get(email='clear@example.com')
+        self.assertEqual(state.failed_attempts, 0)
+        self.assertIsNone(state.lockout_until)
+
+
+class PasswordResetFlowTest(TestCase):
+
+    @patch('taskmaster.views.send_password_reset_email')
+    def test_password_reset_request_clears_lockout_state(self, mock_send_password_reset_email):
+        mock_send_password_reset_email.return_value = None
+        User.objects.create_user(
+            username='recover@example.com',
+            email='recover@example.com',
+            password='StrongPassword123!',
+            is_active=True,
+        )
+        LoginLockout.objects.create(
+            email='recover@example.com',
+            failed_attempts=5,
+            lockout_until=timezone.now() + datetime.timedelta(minutes=15),
+        )
+
+        response = self.client.post(
+            reverse('taskmaster:password_reset'),
+            {
+                'email': 'recover@example.com',
+            }
+        )
+
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.url, reverse('taskmaster:index'))
+        state = LoginLockout.objects.get(email='recover@example.com')
+        self.assertEqual(state.failed_attempts, 0)
+        self.assertIsNone(state.lockout_until)

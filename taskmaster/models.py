@@ -1,5 +1,6 @@
 from django.db import models
 from django.core.validators import MaxValueValidator, MinValueValidator
+from django.utils import timezone
 import datetime
 
 # The sole data piece for TaskMaster - the task
@@ -36,3 +37,16 @@ class Task(models.Model):
             return self.due_date.strftime('%b %-d')
         else:
             return self.due_date.strftime('%x')
+
+
+class LoginLockout(models.Model):
+    email = models.EmailField(unique=True)
+    failed_attempts = models.PositiveSmallIntegerField(default=0)
+    lockout_until = models.DateTimeField(null=True, blank=True)
+    updated_at = models.DateTimeField(auto_now=True)
+
+    def is_locked(self):
+        return self.lockout_until is not None and self.lockout_until > timezone.now()
+
+    def __str__(self):
+        return f"{self.email} ({self.failed_attempts})"

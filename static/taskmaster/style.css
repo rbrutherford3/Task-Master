@@ -96,8 +96,10 @@ a {
 .small_text {
     font-size: small;
 }
-.alert {
-    font-weight: normal;
+.alert,
+.alert-danger,
+.alert-dark {
+    font-weight: normal !important;
 }
 .task_input {
     display: block;
