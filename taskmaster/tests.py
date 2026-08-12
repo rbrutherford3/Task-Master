@@ -64,6 +64,16 @@ class DateFormatTest(TestCase):
         self.assertEqual(test_date.strftime('%x'), task.formatted_due_date)
 
 
+class FaviconAssetsTest(TestCase):
+
+    def test_page_includes_favicon_links(self):
+        response = self.client.get(reverse('taskmaster:login'))
+
+        self.assertEqual(response.status_code, 200)
+        self.assertContains(response, '/static/favicon/favicon.ico')
+        self.assertContains(response, '/static/favicon/site.webmanifest')
+
+
 class TaskDetailTest(TestCase):
 
     def test_task_detail_exists(self):
