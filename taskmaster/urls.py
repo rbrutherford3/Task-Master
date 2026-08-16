@@ -2,6 +2,7 @@ from django.urls import path, reverse_lazy
 from django.contrib.auth import views as auth_views
 
 from . import views
+from .forms import AutofocusSetPasswordForm
 
 app_name = 'taskmaster'
 urlpatterns = [
@@ -19,6 +20,6 @@ urlpatterns = [
     path('settings/', views.settings_view, name='settings'),
     path('settings/confirm/<str:signed_payload>/', views.settings_confirm, name='settings_confirm'),
     path('password_reset', views.password_reset_request, name='password_reset'),
-    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(success_url=reverse_lazy('taskmaster:password_reset_complete'), template_name="taskmaster/password/password_reset_confirm.html"), name='password_reset_confirm'),
+    path('reset/<uidb64>/<token>/', auth_views.PasswordResetConfirmView.as_view(success_url=reverse_lazy('taskmaster:password_reset_complete'), template_name="taskmaster/password/password_reset_confirm.html", form_class=AutofocusSetPasswordForm), name='password_reset_confirm'),
     path('reset/done/', views.password_reset_complete, name='password_reset_complete'),
 ]

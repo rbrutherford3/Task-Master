@@ -6,13 +6,13 @@ from .forms import (
     EmailUpdateRequestForm,
     RegistrationIdentityForm,
     RegistrationPasswordForm,
+    AutofocusPasswordResetForm,
 )
 from django.contrib.auth import login, authenticate, logout, get_user_model
 from django.contrib.auth.decorators import login_required
 from django.contrib import messages
 from django.conf import settings
 from django.http import HttpResponse
-from django.contrib.auth.forms import PasswordResetForm
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.template.loader import render_to_string
@@ -550,7 +550,7 @@ def password_reset_request(request):
                     'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY,
                 },
             )
-        password_reset_form = PasswordResetForm(request.POST)
+        password_reset_form = AutofocusPasswordResetForm(request.POST)
         if password_reset_form.is_valid():
             data = password_reset_form.cleaned_data['email']
             associated_users = User.objects.filter(Q(email=data))
@@ -570,7 +570,7 @@ def password_reset_request(request):
                 messages.error(request, 'There is no account associated with that email address.')
         else:
             messages.error(request, 'An invalid email has been entered.')
-    password_reset_form = PasswordResetForm()
+    password_reset_form = AutofocusPasswordResetForm()
     return render(request=request, template_name="taskmaster/password/password_reset.html", context={"password_reset_form": password_reset_form, 'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY})
 
 def password_reset_complete(request):

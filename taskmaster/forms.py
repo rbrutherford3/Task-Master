@@ -1,5 +1,6 @@
+
 from django import forms
-from django.contrib.auth.forms import AuthenticationForm
+from django.contrib.auth.forms import AuthenticationForm, PasswordResetForm, SetPasswordForm
 from django.contrib.auth.models import User
 from django.contrib.auth.password_validation import validate_password
 from django.core.exceptions import ValidationError
@@ -10,6 +11,22 @@ class EmailAuthenticationForm(AuthenticationForm):
 		label="Email",
 		required=True,
 		widget=forms.EmailInput(attrs={"class": "task_input full_width", "autofocus": True}),
+	)
+
+
+class AutofocusPasswordResetForm(PasswordResetForm):
+	email = forms.EmailField(
+		label="Email",
+		max_length=254,
+		widget=forms.EmailInput(attrs={"class": "task_input full_width", "autofocus": True}),
+	)
+
+
+class AutofocusSetPasswordForm(SetPasswordForm):
+	new_password1 = forms.CharField(
+		label="New password",
+		strip=False,
+		widget=forms.PasswordInput(attrs={"class": "task_input full_width", "autofocus": True}),
 	)
 
 
