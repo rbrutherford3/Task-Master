@@ -32,9 +32,14 @@ h2 {
     font-size: medium;
     font-weight: normal;
 }
-a {
-    text-decoration: none;
-    font-weight: normal;
+a,
+a:link,
+a:visited,
+a:hover,
+a:active {
+    text-decoration: underline !important;
+    font-weight: bold;
+    color: black !important;
     outline: none;
 }
 .column {
@@ -146,6 +151,14 @@ input[type="checkbox"] {
 .buttonlink:hover {
     text-decoration: none;
     color: black;
+}
+.buttonlink,
+.buttonlink:link,
+.buttonlink:visited,
+.buttonlink:hover,
+.buttonlink:active,
+a:has(.button) {
+    text-decoration: none !important;
 }
 .overlay{
     position:fixed;
