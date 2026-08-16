@@ -12,9 +12,8 @@
             <form method="POST">
                 {% csrf_token %}
                 {{ login_form|crispy }}
+                <div class="cf-turnstile" data-sitekey="{{ TURNSTILE_site_key }}" data-action="login"></div>
                 <button class="button label normal_text" type="submit">Login</button>
-                <input type="hidden" id="g-recaptcha-response" name="g-recaptcha-response">
-                <input type="hidden" name="action" value="validate_captcha">
             </form>
 
             <p>Forgot your password? <a href="{% url 'taskmaster:password_reset' %}">Reset it here</a>.</p>

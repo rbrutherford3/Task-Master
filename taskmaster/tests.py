@@ -248,7 +248,7 @@ class SettingsFlowTest(TestCase):
 
 class RegistrationFlowTest(TestCase):
 
-    @patch('taskmaster.views.verify_recaptcha')
+    @patch('taskmaster.views.verify_turnstile')
     def test_register_step_one_accepts_existing_email(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
         User.objects.create_user(username='taken@example.com', email='taken@example.com', password='x-12345-Abc')
@@ -257,21 +257,21 @@ class RegistrationFlowTest(TestCase):
             reverse('taskmaster:register'),
             {
                 'email': 'taken@example.com',
-                'g-recaptcha-response': 'token',
+                'cf-turnstile-response': 'token',
             }
         )
 
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.url, reverse('taskmaster:register_password'))
 
-    @patch('taskmaster.views.verify_recaptcha')
+    @patch('taskmaster.views.verify_turnstile')
     def test_register_step_one_accepts_new_email(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
         response = self.client.post(
             reverse('taskmaster:register'),
             {
                 'email': 'new@example.com',
-                'g-recaptcha-response': 'token',
+                'cf-turnstile-response': 'token',
             }
         )
 
@@ -284,7 +284,7 @@ class RegistrationFlowTest(TestCase):
         self.assertEqual(response.url, reverse('taskmaster:register'))
 
     @patch('taskmaster.views.activateEmail')
-    @patch('taskmaster.views.verify_recaptcha')
+    @patch('taskmaster.views.verify_turnstile')
     def test_register_two_step_creates_inactive_user(self, mock_verify_recaptcha, mock_activate_email):
         mock_verify_recaptcha.return_value = {'success': True}
 
@@ -292,7 +292,7 @@ class RegistrationFlowTest(TestCase):
             reverse('taskmaster:register'),
             {
                 'email': 'new@example.com',
-                'g-recaptcha-response': 'token',
+                'cf-turnstile-response': 'token',
             }
         )
         self.assertEqual(step_one.status_code, 302)
@@ -315,7 +315,7 @@ class RegistrationFlowTest(TestCase):
         self.assertEqual(mock_activate_email.call_count, 1)
 
     @patch('taskmaster.views.send_existing_account_notice_email')
-    @patch('taskmaster.views.verify_recaptcha')
+    @patch('taskmaster.views.verify_turnstile')
     def test_register_two_step_notifies_existing_email_without_creating_user(self, mock_verify_recaptcha, mock_send_notice_email):
         mock_verify_recaptcha.return_value = {'success': True}
         existing_user = User.objects.create_user(
@@ -354,7 +354,7 @@ class LoginFlowTest(TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertNotContains(response, 'Would you like to be resent the confirmation email?')
 
-    @patch('taskmaster.views.verify_recaptcha')
+    @patch('taskmaster.views.verify_turnstile')
     def test_inactive_user_login_returns_generic_error(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
         User.objects.create_user(
@@ -369,7 +369,7 @@ class LoginFlowTest(TestCase):
             {
                 'username': 'pending@example.com',
                 'password': 'StrongPassword123!',
-                'g-recaptcha-response': 'token',
+                'cf-turnstile-response': 'token',
             }
         )
 
@@ -377,7 +377,7 @@ class LoginFlowTest(TestCase):
         self.assertContains(response, 'Invalid email or password.')
         self.assertNotContains(response, 'Would you like to be resent the confirmation email?')
 
-    @patch('taskmaster.views.verify_recaptcha')
+    @patch('taskmaster.views.verify_turnstile')
     def test_invalid_login_increments_failed_attempts(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
         User.objects.create_user(
@@ -392,7 +392,7 @@ class LoginFlowTest(TestCase):
             {
                 'username': 'user@example.com',
                 'password': 'wrong-password',
-                'g-recaptcha-response': 'token',
+                'cf-turnstile-response': 'token',
             }
         )
 
@@ -402,7 +402,7 @@ class LoginFlowTest(TestCase):
         self.assertEqual(state.failed_attempts, 1)
         self.assertIsNone(state.lockout_until)
 
-    @patch('taskmaster.views.verify_recaptcha')
+    @patch('taskmaster.views.verify_turnstile')
     def test_fifth_invalid_login_sets_fifteen_minute_lockout(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
         User.objects.create_user(
@@ -418,7 +418,7 @@ class LoginFlowTest(TestCase):
                 {
                     'username': 'lockme@example.com',
                     'password': 'wrong-password',
-                    'g-recaptcha-response': 'token',
+                    'cf-turnstile-response': 'token',
                 }
             )
 
@@ -430,7 +430,7 @@ class LoginFlowTest(TestCase):
         self.assertGreater(state.lockout_until, timezone.now())
         self.assertLessEqual(state.lockout_until, timezone.now() + datetime.timedelta(minutes=15, seconds=5))
 
-    @patch('taskmaster.views.verify_recaptcha')
+    @patch('taskmaster.views.verify_turnstile')
     def test_locked_out_user_is_rejected_with_generic_error(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
         User.objects.create_user(
@@ -450,14 +450,14 @@ class LoginFlowTest(TestCase):
             {
                 'username': 'locked@example.com',
                 'password': 'StrongPassword123!',
-                'g-recaptcha-response': 'token',
+                'cf-turnstile-response': 'token',
             }
         )
 
         self.assertEqual(response.status_code, 200)
         self.assertContains(response, 'Invalid email or password.')
 
-    @patch('taskmaster.views.verify_recaptcha')
+    @patch('taskmaster.views.verify_turnstile')
     def test_successful_login_clears_lockout_state(self, mock_verify_recaptcha):
         mock_verify_recaptcha.return_value = {'success': True}
         user = User.objects.create_user(
@@ -477,7 +477,7 @@ class LoginFlowTest(TestCase):
             {
                 'username': 'clear@example.com',
                 'password': 'StrongPassword123!',
-                'g-recaptcha-response': 'token',
+                'cf-turnstile-response': 'token',
             }
         )
 
@@ -493,7 +493,9 @@ class LoginFlowTest(TestCase):
 class PasswordResetFlowTest(TestCase):
 
     @patch('taskmaster.views.send_password_reset_email')
-    def test_password_reset_request_clears_lockout_state(self, mock_send_password_reset_email):
+    @patch('taskmaster.views.verify_turnstile')
+    def test_password_reset_request_clears_lockout_state(self, mock_verify_turnstile, mock_send_password_reset_email):
+        mock_verify_turnstile.return_value = {'success': True}
         mock_send_password_reset_email.return_value = None
         User.objects.create_user(
             username='recover@example.com',
@@ -511,6 +513,7 @@ class PasswordResetFlowTest(TestCase):
             reverse('taskmaster:password_reset'),
             {
                 'email': 'recover@example.com',
+                'cf-turnstile-response': 'token',
             }
         )
 

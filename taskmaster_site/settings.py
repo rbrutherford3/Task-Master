@@ -2,7 +2,7 @@ import os
 import sys
 from pathlib import Path
 
-from taskmaster.recaptchav3 import RECAPTCHA_SECRET_KEY, RECAPTCHA_SITE_KEY
+from taskmaster.recaptchav3 import TURNSTILE_SECRET, TURNSTILE_SITE_KEY
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(BASE_DIR))

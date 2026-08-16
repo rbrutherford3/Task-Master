@@ -20,7 +20,7 @@ Task Master is a task management software created by Spiff Industries for standa
 
 On Ubuntu or Debian:
 
-```
+```bash
 sudo apt-get install -y python3 python3-pip python3-venv
 ```
 
@@ -28,27 +28,27 @@ Use the equivalent package manager or installer for your operating system if you
 
 #### 2. Clone the project and change into the repository directory:
 
-```
+```bash
 git clone https://github.com/rbrutherford3/Task-Master.git
 cd Task-Master
 ```
 
 #### 3. Create and activate a virtual environment:
 
-```
+```bash
 python3 -m venv .venv
 source .venv/bin/activate
 ```
 
 #### 4. Install Python dependencies from the project requirements file:
 
-```
+```bash
 pip3 install -r requirements.txt
 ```
 
 #### 5. Create a [Resend](https://resend.com/) account and get an API key
 
-#### 6. Create Google reCAPTCHAv3 site key and secret keys, making sure your reCAPTCHA configuration allows `localhost` and `127.0.0.1`
+#### 6. Create a Cloudflare Turnstile widget and site key/secret, making sure the widget's allowed domains include `localhost` and `127.0.0.1`
 
 #### 7. Create a [neon](https://neon.com/) account and get a connection URL like the own shown below in step 8
 
@@ -58,14 +58,15 @@ The project reads local secrets and database settings from `local_settings.py` i
 
 ```python
 RESEND_API_KEY = "your-resend-api-key"
-RECAPTCHA_SITE_KEY = "your-recaptcha-site-key"
-RECAPTCHA_SECRET_KEY = "your-recaptcha-secret-key"
+TURNSTILE_SITE_KEY = "your-turnstile-site-key"
+TURNSTILE_SECRET = "your-turnstile-secret"
+TURNSTILE_HOSTNAMES = "localhost,127.0.0.1"
 DATABASE_URL = "postgresql://user:password@localhost:5432/taskmaster"
 ```
 
 `DATABASE_URL` can point to PostgreSQL or MySQL. If it is omitted, the project falls back to SQLite for local development. PostgreSQL support uses psycopg2-binary; if you use MySQL, install the appropriate MySQL driver for your environment.
 
-If you deploy on Vercel, the same values from `local_settings.py` should be entered as environment variables in the Vercel project settings.
+If you deploy on Vercel, add `TURNSTILE_SECRET`, `TURNSTILE_SITE_KEY`, and `TURNSTILE_HOSTNAMES` to the project environment. Set `TURNSTILE_HOSTNAMES` to the production frontend hostnames only, for example `masteroftasks.com`; do not include local development hosts in production.
 
 #### 9. Finish the Django setup
 
@@ -81,8 +82,9 @@ Open your browser and navigate to `http://127.0.0.1:8000/`.
 
 If you want to use a different timezone, update `TIME_ZONE` in `taskmaster_site/settings.py`. The project currently defaults to `America/New_York`.
 
-#### 10. Optional: when you are done using the app, deactivate the virtual environment:
-```
+#### 10. Optional: when you are done using the app, deactivate the virtual environment
+
+```bash
 deactivate
 ```
 

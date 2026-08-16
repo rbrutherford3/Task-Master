@@ -108,7 +108,7 @@ def send_existing_account_notice_email(request, to_email):
     )
     resend_send_email("Security notice: account activity detected", to_email, text=message)
 
-from .recaptchav3 import verify_recaptcha
+from .recaptchav3 import verify_turnstile
 
 # Show all tasks and group by urgency (hence the three queries)
 class IndexView(generic.ListView):
@@ -194,18 +194,23 @@ def activateEmail(request, user, to_email, success_message=None):
 # Register a user account
 def register_request(request):
     if request.method == "POST":
-        secret_key = settings.RECAPTCHA_SECRET_KEY
+        secret_key = settings.TURNSTILE_SECRET
         try:
-            result_json = verify_recaptcha(request.POST.get('g-recaptcha-response'), secret_key=secret_key)
+            result_json = verify_turnstile(
+                request.POST.get('cf-turnstile-response'),
+                expected_action="signup",
+                hostname=request.get_host().split(":", 1)[0],
+                secret_key=secret_key,
+            )
         except requests.RequestException:
-            messages.error(request, "reCAPTCHA verification could not be completed.")
+            messages.error(request, "Turnstile verification could not be completed.")
             form = RegistrationIdentityForm(request.POST)
-            return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
+            return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY})
 
         form = RegistrationIdentityForm(request.POST)
         if not result_json.get('success'):
             messages.error(request, "If you identify as a robot, we have somewhere else for you to go")
-            return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
+            return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY})
 
         if form.is_valid():
             request.session[REGISTER_IDENTITY_SESSION_KEY] = {
@@ -214,10 +219,10 @@ def register_request(request):
             return redirect('taskmaster:register_password')
 
         messages.error(request, "Please correct the highlighted fields.")
-        return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
+        return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY})
 
     form = RegistrationIdentityForm()
-    return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY})
+    return render(request=request, template_name="taskmaster/register.html", context={"register_form": form, 'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY})
 
 
 def register_password_request(request):
@@ -289,9 +294,14 @@ def login_request(request):
         request.session.pop(LOGIN_PENDING_ACTIVATION_SESSION_KEY, None)
 
     if request.method == "POST":
-        secret_key = settings.RECAPTCHA_SECRET_KEY
+        secret_key = settings.TURNSTILE_SECRET
         try:
-            result_json = verify_recaptcha(request.POST.get('g-recaptcha-response'), secret_key=secret_key)
+            result_json = verify_turnstile(
+                request.POST.get('cf-turnstile-response'),
+                expected_action="login",
+                hostname=request.get_host().split(":", 1)[0],
+                secret_key=secret_key,
+            )
         except requests.RequestException:
             messages.error(request, invalid_login_message)
             form = EmailAuthenticationForm()
@@ -300,7 +310,7 @@ def login_request(request):
                 template_name='taskmaster/login.html',
                 context={
                     "login_form": form,
-                    'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+                    'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY,
                     'show_resend_activation': False,
                     'resend_prompt': resend_prompt,
                 },
@@ -314,7 +324,7 @@ def login_request(request):
                 template_name='taskmaster/login.html',
                 context={
                     "login_form": form,
-                    'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+                    'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY,
                     'show_resend_activation': False,
                     'resend_prompt': resend_prompt,
                 },
@@ -336,7 +346,7 @@ def login_request(request):
                     template_name='taskmaster/login.html',
                     context={
                         "login_form": form,
-                        'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+                        'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY,
                         'show_resend_activation': False,
                         'resend_prompt': resend_prompt,
                     },
@@ -370,7 +380,7 @@ def login_request(request):
         template_name='taskmaster/login.html',
         context={
             "login_form": form,
-            'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+            'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY,
             'show_resend_activation': False,
             'resend_prompt': resend_prompt,
         }
@@ -435,7 +445,7 @@ def settings_view(request):
                     "taskmaster/settings.html",
                     {
                         'email_form': email_form,
-                        'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+                        'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY,
                     }
                 )
 
@@ -463,7 +473,7 @@ def settings_view(request):
         "taskmaster/settings.html",
         {
             'email_form': EmailUpdateRequestForm(initial={'email': request.user.email}),
-            'reCAPTCHA_site_key': settings.RECAPTCHA_SITE_KEY,
+                        'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY,
         }
     )
 
@@ -519,6 +529,27 @@ def settings_confirm(request, signed_payload):
 
 def password_reset_request(request):
     if request.method == "POST":
+        try:
+            result_json = verify_turnstile(
+                request.POST.get('cf-turnstile-response'),
+                expected_action="password_reset",
+                hostname=request.get_host().split(":", 1)[0],
+                secret_key=settings.TURNSTILE_SECRET,
+            )
+        except requests.RequestException:
+            messages.error(request, "Turnstile verification could not be completed.")
+            result_json = {"success": False}
+        if not result_json.get('success'):
+            messages.error(request, "Invalid security verification.")
+            password_reset_form = PasswordResetForm(request.POST)
+            return render(
+                request=request,
+                template_name="taskmaster/password/password_reset.html",
+                context={
+                    "password_reset_form": password_reset_form,
+                    'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY,
+                },
+            )
         password_reset_form = PasswordResetForm(request.POST)
         if password_reset_form.is_valid():
             data = password_reset_form.cleaned_data['email']
@@ -540,7 +571,7 @@ def password_reset_request(request):
         else:
             messages.error(request, 'An invalid email has been entered.')
     password_reset_form = PasswordResetForm()
-    return render(request=request, template_name="taskmaster/password/password_reset.html", context={"password_reset_form":password_reset_form,'reCAPTCHA_site_key':settings.RECAPTCHA_SITE_KEY})
+    return render(request=request, template_name="taskmaster/password/password_reset.html", context={"password_reset_form": password_reset_form, 'TURNSTILE_site_key': settings.TURNSTILE_SITE_KEY})
 
 def password_reset_complete(request):
     messages.success(request, "Your password has been successfully reset, you may now log in")
