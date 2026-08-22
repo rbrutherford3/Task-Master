@@ -1,41 +1,39 @@
 {% extends "taskmaster/header.html" %}
 
 {% block content %}
-<div id="body" class="overlay" style="background-color: white;">
-    <div class="detailcontainer" style="left: 50%; transform: translateX(-50%); top: 30px; width: 340px;">
-        <div class="detail low" style="display: block;">
-            <div class="label normal_text" style="margin-bottom: 8px;">Account Settings</div>
+<div id="body" class="overlay auth_layout">
+    <div class="detailcontainer auth_panel_container">
+        <div class="detail low auth_panel">
+            <div class="label normal_text panel_title">Account Settings</div>
 
-            <form action="{% url 'taskmaster:settings' %}" method="POST">
+            <form class="settings_section" action="{% url 'taskmaster:settings' %}" method="POST">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="password">
-                <div class="small_text" style="margin-bottom: 4px;">Password</div>
-                <input class="button label normal_text" type="submit" value="Send Password Reset Email">
+                <div class="small_text settings_label">Password</div>
+                <button class="button label normal_text settings_button" type="submit">Send Password Reset Email</button>
             </form>
 
             <hr>
 
-            <form action="{% url 'taskmaster:settings' %}" method="POST">
+            <form class="settings_section" action="{% url 'taskmaster:settings' %}" method="POST">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="email">
-                <div class="small_text" style="margin-bottom: 4px;">Email Address</div>
+                <div class="small_text settings_label">Email Address</div>
                 {{ email_form.email }}
-                <input class="button label normal_text" type="submit" value="Request Email Change">
+                <button class="button label normal_text settings_button" type="submit">Request Email Change</button>
             </form>
 
             <hr>
 
-            <form action="{% url 'taskmaster:settings' %}" method="POST" onsubmit="return confirm('Are you sure you want to request account deletion?');">
+            <form class="settings_section" action="{% url 'taskmaster:settings' %}" method="POST" onsubmit="return confirm('Are you sure you want to request account deletion?');">
                 {% csrf_token %}
                 <input type="hidden" name="action" value="delete">
-                <input class="button label normal_text" type="submit" value="Delete Account">
+                <div class="small_text settings_label">Delete Account</div>
+                <button class="button label normal_text settings_button" type="submit">Request Account Deletion</button>
             </form>
 
-            <a class="buttonlink" href="{% url 'taskmaster:index' %}">
-                <div class="button navigation" style="margin-top: 10px;">
-                    <div class="label normal_text">Back to Tasks</div>
-                </div>
-            </a>
+            <hr>
+            <a class="button label normal_text settings_button settings_back_button" href="{% url 'taskmaster:index' %}">Back to Tasks</a>
 
             {% if messages %}
             {% for message in messages %}
